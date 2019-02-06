@@ -52,7 +52,7 @@ HEP: home expeller pleasing
 HOP: home orange pleasing
 PHO: pleasing home orange
 POH: pleasing orange home
-``
+```
 
 Elements in curly braces `{...}` can occur in any order and any quantity:
 

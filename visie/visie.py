@@ -46,7 +46,7 @@ class Constraint(object):
         return filter(lambda m : m, self.match(word))
     def __str__(self):
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"
-    def __str__(self):
+    def __repr__(self):
         return f"{type(self).__name__}({repr(self.children)})"
 
 class DictionaryWord(Constraint):
@@ -184,7 +184,8 @@ class Wildcard(Constraint):
         return 1
     def __str__(self):
         return 'Wildcard<.>'
-    __repr__ = __str__
+    def __repr__(self):
+        return 'Wildcard()'
 
 class Optional(OrderedConstraint):
     def match(self, word):

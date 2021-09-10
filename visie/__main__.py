@@ -102,7 +102,7 @@ The name `visie` was discovered this way:
         sys.stderr.write(str(e))
         exit(1)
     except KeyboardInterrupt:
-        exit(1)
+        exit(130)  # see: https://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
 
 
 if __name__ == '__main__':

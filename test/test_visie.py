@@ -1,7 +1,11 @@
+from pathlib import Path
 import unittest
 
 from visie import generate
 from visie.parser import Parser
+
+
+LOCAL_DICT_PATH = str(Path(__file__).parent.absolute() / "words")
 
 
 class TestVisie(unittest.TestCase):
@@ -57,7 +61,10 @@ class TestVisie(unittest.TestCase):
                 ),
 
         ):
-            actual = {f"{a.name()}: {' '.join(a)}" for a in generate(Parser(test).parse(), min_length=4)}
+            actual = {
+                f"{a.name()}: {' '.join(a)}"
+                for a in generate(Parser(test).parse(), min_length=4, dict_path=LOCAL_DICT_PATH)
+            }
             if actual != expected:
                 r = (f"\n    {a!r}," for a in sorted(actual))
                 print(f"Actual result:\n{{{''.join(r)}\n}}\n")

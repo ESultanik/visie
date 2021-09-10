@@ -45,7 +45,7 @@ class Acronym:
         ret = repr(self._matches)
         if self._remainder:
             ret = f"{ret}, remainder={self.remainder!r}"
-        return f"{type(self).__name__}({ret})"
+        return f"{type(self).__name__}({ret!r})"
 
 
 class Constraint(ABC):
@@ -78,7 +78,7 @@ class Constraint(ABC):
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"
 
     def __repr__(self):
-        return f"{type(self).__name__}({repr(self.children)})"
+        return f"{type(self).__name__}({self.children!r})"
 
 
 class DictionaryWord(Constraint):

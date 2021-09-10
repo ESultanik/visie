@@ -47,7 +47,7 @@ class Tokenizer:
         if isinstance(text, str):
             text = tokenize(text)
         self._tokens: Iterator[Token] = iter(text)
-        self._token_buffer = []
+        self._token_buffer: List[Token] = []
 
     def __iter__(self) -> Iterator[Token]:
         while True:
@@ -103,7 +103,7 @@ class Parser:
             raise Exception(f"{str(e)}\nwhen looking for the closing delimiter of\n{str(start)}\n")
         return constraint_type(children)
 
-    def _parse_arguments(self, until: Optional[Token] = None) -> List[visie.Constraint]:
+    def _parse_arguments(self, until: Optional[str] = None) -> List[visie.Constraint]:
         children: List[visie.Constraint] = []
         while True:
             next_token = self._tokenizer.peek()
@@ -113,7 +113,7 @@ class Parser:
                     visie.OrderedConstraint, visie.AllOfConstraint, visie.ExactlyOneConstraint, visie.AnyOfConstraint
             ):
                 if next_token.token == constraint_type.BEGIN_DELIM:
-                    children.append(self._parse(constraint_type))
+                    children.append(self._parse(constraint_type))  # type: ignore
                     break
             else:
                 if next_token.token == '?':

@@ -2,23 +2,23 @@ import itertools
 from typing import Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
 
 VARIATION_MAPPING: Dict[str, Tuple[str, ...]] = {
-    'c': ['k'],
-    'k': ['c'],
-    'i': ['ee', 'ii', 'y'],
-    'ee': ['i', 'ii', 'y'],
-    'oo': ['u'],
-    'a': ['u', 'o'],
-    'o': ['u', 'a'],
-    'u': ['a', 'o', 'oo'],
-    'j': ['g', 'gg'],
-    'g': ['gg'],
-    'h': ['kh'],
-    'kh': ['h', 'ch'],
-    'y': ['ee', 'i', 'ii'],
-    'sh': ['xi'],
-    'xi': ['sh'],
-    'w': ['ui'],
-    'ui': ['w'],
+    'c': ('k',),
+    'k': ('c',),
+    'i': ('ee', 'ii', 'y'),
+    'ee': ('i', 'ii', 'y'),
+    'oo': ('u',),
+    'a': ('u', 'o'),
+    'o': ('u', 'a'),
+    'u': ('a', 'o', 'oo'),
+    'j': ('g', 'gg'),
+    'g': ('gg',),
+    'h': ('kh',),
+    'kh': ('h', 'ch'),
+    'y': ('ee', 'i', 'ii'),
+    'sh': ('xi',),
+    'xi': ('sh',),
+    'w': ('ui',),
+    'ui': ('w',),
 }
 
 T = TypeVar("T", bound=Hashable)
@@ -29,7 +29,7 @@ def unique_everseen(iterable: Iterable[T], key: Optional[Callable[[T], Hashable]
     # unique_everseen('AAAABBBCCDAABBB') --> A B C D
     # unique_everseen('ABBCcAD', str.lower) --> A B C D
     seen: Set[Hashable] = set()
-    seen_add: Callable[[T], None] = seen.add
+    seen_add: Callable[[Hashable], None] = seen.add
     if key is None:
         for element in itertools.filterfalse(seen.__contains__, iterable):
             seen_add(element)

@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 from . import visie, parser
@@ -83,6 +84,11 @@ The name `visie` was discovered this way:
         constraints = constraints[0]
     else:
         constraints = visie.AnyOfConstraint(constraints)
+
+    if not os.path.exists(args.dict):
+        sys.stderr.write(f"{args.dict} does not exist!\n\nEnsure that a word list is installed.\nOn most Linux "
+                         f"distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n")
+        exit(1)
 
     try:
         for acronym in visie.generate(

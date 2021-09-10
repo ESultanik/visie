@@ -1,16 +1,27 @@
+from typing import Iterable, Iterator, List, Optional, Type, TypeVar, Union
+
 from . import visie
 
-class Token(object):
-    def __init__(self, token, offset, fulltext):
-        self.token = token
-        self.offset = offset
-        self.fulltext = fulltext
+
+class ParseException(Exception):
+    pass
+
+
+class Token:
+    def __init__(self, token: str, offset: int, fulltext: str):
+        self.token: str = token
+        self.offset: int = offset
+        self.fulltext: str = fulltext
+
     def __str__(self):
+        num_newlines = self.fulltext
         return f"{self.fulltext}\n{' '*self.offset}{'^'*len(self.token)}"
+
     def __repr__(self):
         return f"{type(self).__name__}(token={self.token!r}, offset={self.offset!r}, fulltext={self.fulltext!r})"
 
-def tokenize(text):
+
+def tokenize(text: str) -> Iterator[Token]:
     word = ''
     for i, c in enumerate(text):
         if c in ('(', ')', '[', ']', '{', '}', '<', '>', '?', '.'):
@@ -23,72 +34,86 @@ def tokenize(text):
                 yield Token(word, i - len(word), text)
                 word = ''
             continue
-        elif ord(c.lower()) >= ord('a') and ord(c.lower()) <= ord('z'):
+        elif ord('a') <= ord(c.lower()) <= ord('z'):
             word += c
         else:
-            raise Exception(f"{text}\n{' '*(len(text)-i)}^\nIllegal token \"{c}\"")
+            raise ParseException(f"{text}\n{' '*(len(text)-i)}^\nIllegal token \"{c}\"")
     if word:
         yield Token(word, len(text) - len(word), text)
 
-class Tokenizer(object):
-    def __init__(self, text):
-        self._tokens = iter(tokenize(text))
+
+class Tokenizer:
+    def __init__(self, text: Union[str, Iterable[Token]]):
+        if isinstance(text, str):
+            text = tokenize(text)
+        self._tokens: Iterator[Token] = iter(text)
         self._token_buffer = []
-    def __iter__(self):
+
+    def __iter__(self) -> Iterator[Token]:
         while True:
             yield self.pop()
-    def pop(self):
+
+    def pop(self) -> Token:
         if not self._token_buffer:
             return next(self._tokens)
         ret = self._token_buffer[0]
         self._token_buffer = self._token_buffer[1:]
         return ret
-    def peek(self):
+
+    def peek(self) -> Optional[Token]:
         if not self._token_buffer:
             try:
                 self._token_buffer.append(next(self._tokens))
             except StopIteration:
                 return None
         return self._token_buffer[0]
-    def push(self, token):
+
+    def push(self, token: Token):
         self._token_buffer = [token] + self._token_buffer
-    def expect(self, startswith):
+
+    def expect(self, startswith: str) -> Token:
         try:
             next_token = self.pop()
             if not next_token.token.startswith(startswith):
-                raise Exception(f"\n{str(next_token)}\nExpected \"{startswith}\"")
+                raise ParseException(f"\n{str(next_token)}\nExpected \"{startswith}\"")
             return next_token
         except StopIteration:
-            raise Exception(f"Ran out of tokens when looking for {startswith}")
+            raise ParseException(f"Ran out of tokens when looking for {startswith}")
 
-class Parser(object):
-    def __init__(self, text):
-        self._fulltext = text
-        self._tokenizer = Tokenizer(text)
 
-    def _parse(self, ConstraintType):
-        start = self._tokenizer.expect(ConstraintType.BEGIN_DELIM)
+C = TypeVar("C", bound=visie.Constraint)
+
+
+class Parser:
+    def __init__(self, text: str):
+        self._fulltext: str = text
+        self._tokenizer: Tokenizer = Tokenizer(text)
+
+    def _parse(self, constraint_type: Type[C]) -> C:
+        start = self._tokenizer.expect(constraint_type.BEGIN_DELIM)
         children = []
         while True:
             next_token = self._tokenizer.peek()
-            if next_token is None or next_token.token.startswith(ConstraintType.END_DELIM):
+            if next_token is None or next_token.token.startswith(constraint_type.END_DELIM):
                 break
-            children += self._parse_arguments(until=ConstraintType.END_DELIM)
+            children += self._parse_arguments(until=constraint_type.END_DELIM)
         try:
-            self._tokenizer.expect(ConstraintType.END_DELIM)
+            self._tokenizer.expect(constraint_type.END_DELIM)
         except Exception as e:
             raise Exception(f"{str(e)}\nwhen looking for the closing delimiter of\n{str(start)}\n")
-        return ConstraintType(children)
+        return constraint_type(children)
 
-    def _parse_arguments(self, until=None):
-        children = []
+    def _parse_arguments(self, until: Optional[Token] = None) -> List[visie.Constraint]:
+        children: List[visie.Constraint] = []
         while True:
             next_token = self._tokenizer.peek()
             if next_token is None or next_token.token == until:
                 break
-            for ConstraintType in (visie.OrderedConstraint, visie.AllOfConstraint, visie.ExactlyOneConstraint, visie.AnyOfConstraint):
-                if next_token.token == ConstraintType.BEGIN_DELIM:
-                    children.append(self._parse(ConstraintType))
+            for constraint_type in (
+                    visie.OrderedConstraint, visie.AllOfConstraint, visie.ExactlyOneConstraint, visie.AnyOfConstraint
+            ):
+                if next_token.token == constraint_type.BEGIN_DELIM:
+                    children.append(self._parse(constraint_type))
                     break
             else:
                 if next_token.token == '?':
@@ -103,7 +128,7 @@ class Parser(object):
                     children.append(visie.DictionaryWord(self._tokenizer.pop().token))
         return children
 
-    def parse(self):
+    def parse(self) -> visie.Constraint:
         """
         <all must occur in order>
         [all must occur in any order]
@@ -113,7 +138,7 @@ class Parser(object):
         """
         children = self._parse_arguments()
         if not children:
-            raise Exception(f"No tokens found while parsing \"{self.fulltext}\"")
+            raise Exception(f"No tokens found while parsing \"{self._fulltext}\"")
         elif len(children) == 1:
             return children[0]
         else:

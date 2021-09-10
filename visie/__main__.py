@@ -3,6 +3,7 @@ import sys
 
 from . import visie, parser
 
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
@@ -70,7 +71,8 @@ The name `visie` was discovered this way:
     arg_parser.add_argument('--use-variants', '-u', action='store_true', help='use variants of the dictionary entries')
     arg_parser.add_argument('--min-length', '-m', type=int, default=4, help='minimum acronym length (default=4)')
     
-    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH, help=f"path to the dictionary file (default={visie.DICT_PATH})")
+    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH,
+                            help=f"path to the dictionary file (default={visie.DICT_PATH})")
     
     args = arg_parser.parse_args(argv[1:])
 
@@ -82,8 +84,17 @@ The name `visie` was discovered this way:
     else:
         constraints = visie.AnyOfConstraint(constraints)
 
-    for acronym in visie.generate(constraints, min_length=args.min_length, use_variants=args.use_variants, dict_path=args.dict):
-        sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    try:
+        for acronym in visie.generate(
+                constraints,
+                min_length=args.min_length,
+                use_variants=args.use_variants,
+                dict_path=args.dict
+        ):
+            sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    except KeyboardInterrupt:
+        exit(1)
+
 
 if __name__ == '__main__':
     main(sys.argv)

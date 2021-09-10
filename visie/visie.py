@@ -291,7 +291,7 @@ def generate(
                 yield match
 
 
-def backronyms(acronym, min_length=3, dict_path=DICT_PATH):
+def backronyms(acronym: str, min_length: int = 3, dict_path: str = DICT_PATH):
     with open(dict_path, 'r') as dictionary:
         required_letters = frozenset(c.lower() for c in acronym)
         possibilities = defaultdict(list)

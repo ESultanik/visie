@@ -3,6 +3,7 @@ import sys
 
 from . import visie, parser
 
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
@@ -69,21 +70,27 @@ The name `visie` was discovered this way:
     arg_parser.add_argument('CONSTRAINT', type=str, nargs='+', help='a constraint (see below)')
     arg_parser.add_argument('--use-variants', '-u', action='store_true', help='use variants of the dictionary entries')
     arg_parser.add_argument('--min-length', '-m', type=int, default=4, help='minimum acronym length (default=4)')
-    
     arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH, help=f"path to the dictionary file (default={visie.DICT_PATH})")
+    arg_parser.add_argument('--backronym', '-b', action='store_true', help='search for backronyms instead of generating acronyms')
     
     args = arg_parser.parse_args(argv[1:])
 
-    constraints = []
-    for arg in args.CONSTRAINT:
-        constraints.append(parser.Parser(arg).parse())
-    if len(constraints) == 1:
-        constraints = constraints[0]
+    if args.backronym:
+        for acronym in args.CONSTRAINT:
+            for backronym in visie.backronyms(acronym, min_length=args.min_length, dict_path=args.dict):
+                sys.stdout.write(f"{' '.join(backronym)}\n")
     else:
-        constraints = visie.AnyOfConstraint(constraints)
+        constraints = []
+        for arg in args.CONSTRAINT:
+            constraints.append(parser.Parser(arg).parse())
+        if len(constraints) == 1:
+            constraints = constraints[0]
+        else:
+            constraints = visie.AnyOfConstraint(constraints)
 
-    for acronym in visie.generate(constraints, min_length=args.min_length, use_variants=args.use_variants, dict_path=args.dict):
-        sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+        for acronym in visie.generate(constraints, min_length=args.min_length, use_variants=args.use_variants, dict_path=args.dict):
+            sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+
 
 if __name__ == '__main__':
     main(sys.argv)

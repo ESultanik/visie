@@ -83,21 +83,21 @@ The name `visie` was discovered this way:
                          f"distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n")
         exit(1)
 
-    if args.backronym:
-        for acronym in args.CONSTRAINT:
-            for backronym in visie.backronyms(acronym, min_length=args.min_length, dict_path=args.dict):
-                sys.stdout.write(f"{' '.join(backronym)}\n")
-        exit(0)
-
-    constraints = []
-    for arg in args.CONSTRAINT:
-        constraints.append(parser.Parser(arg).parse())
-    if len(constraints) == 1:
-        constraints = constraints[0]
-    else:
-        constraints = visie.AnyOfConstraint(constraints)
-
     try:
+        if args.backronym:
+            for acronym in args.CONSTRAINT:
+                for backronym in visie.backronyms(acronym, min_length=args.min_length, dict_path=args.dict):
+                    sys.stdout.write(f"{' '.join(backronym)}\n")
+            exit(0)
+
+        constraints = []
+        for arg in args.CONSTRAINT:
+            constraints.append(parser.Parser(arg).parse())
+        if len(constraints) == 1:
+            constraints = constraints[0]
+        else:
+            constraints = visie.AnyOfConstraint(constraints)
+
         for acronym in visie.generate(
                 constraints,
                 min_length=args.min_length,
@@ -109,7 +109,7 @@ The name `visie` was discovered this way:
         sys.stderr.write(str(e))
         exit(1)
     except KeyboardInterrupt:
-        exit(1)
+        exit(130)  # see: https://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
 
 
 if __name__ == '__main__':

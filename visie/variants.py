@@ -1,31 +1,35 @@
 import itertools
+from typing import Callable, Dict, Hashable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
 
-VARIATION_MAPPING = {
-    'c' : ['k'],
-    'k' : ['c'],
-    'i' : ['ee', 'ii', 'y'],
-    'ee' : ['i', 'ii', 'y'],
-    'oo' : ['u'],
-    'a' : ['u', 'o'],
-    'o' : ['u', 'a'],
-    'u' : ['a', 'o', 'oo'],
-    'j' : ['g', 'gg'],
-    'g' : ['gg'],
-    'h' : ['kh'],
-    'kh' : ['h', 'ch'],
-    'y' : ['ee', 'i', 'ii'],
-    'sh' : ['xi'],
-    'xi' : ['sh'],
-    'w' : ['ui'],
-    'ui' : ['w'],
+VARIATION_MAPPING: Dict[str, Tuple[str, ...]] = {
+    'c': ('k',),
+    'k': ('c',),
+    'i': ('ee', 'ii', 'y'),
+    'ee': ('i', 'ii', 'y'),
+    'oo': ('u',),
+    'a': ('u', 'o'),
+    'o': ('u', 'a'),
+    'u': ('a', 'o', 'oo'),
+    'j': ('g', 'gg'),
+    'g': ('gg',),
+    'h': ('kh',),
+    'kh': ('h', 'ch'),
+    'y': ('ee', 'i', 'ii'),
+    'sh': ('xi',),
+    'xi': ('sh',),
+    'w': ('ui',),
+    'ui': ('w',),
 }
 
-def unique_everseen(iterable, key=None):
-    "List unique elements, preserving order. Remember all elements ever seen."
+T = TypeVar("T", bound=Hashable)
+
+
+def unique_everseen(iterable: Iterable[T], key: Optional[Callable[[T], Hashable]] = None) -> Iterator[T]:
+    """List unique elements, preserving order. Remember all elements ever seen."""
     # unique_everseen('AAAABBBCCDAABBB') --> A B C D
     # unique_everseen('ABBCcAD', str.lower) --> A B C D
-    seen = set()
-    seen_add = seen.add
+    seen: Set[Hashable] = set()
+    seen_add: Callable[[Hashable], None] = seen.add
     if key is None:
         for element in itertools.filterfalse(seen.__contains__, iterable):
             seen_add(element)
@@ -37,11 +41,12 @@ def unique_everseen(iterable, key=None):
                 seen_add(k)
                 yield element
 
-def generate_variants(word):
+
+def generate_variants(word: str) -> Iterator[str]:
     word = word.strip().lower()
     if not word:
-        return ()
-    variations = [word]
+        return
+    variations: List[Tuple[str, ...]] = [(word,)]
     skip = False
     for c, next_c in zip(word, word[1:] + ' '):
         if skip:
@@ -55,4 +60,5 @@ def generate_variants(word):
             variations.append(VARIATION_MAPPING[c])
         else:
             variations.append((c,))
-    return unique_everseen(map(lambda s : ''.join(s), itertools.product(*variations)))
+
+    yield from unique_everseen(("".join(s) for s in itertools.product(*variations)))

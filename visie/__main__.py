@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 
 from . import visie, parser
@@ -70,26 +71,45 @@ The name `visie` was discovered this way:
     arg_parser.add_argument('CONSTRAINT', type=str, nargs='+', help='a constraint (see below)')
     arg_parser.add_argument('--use-variants', '-u', action='store_true', help='use variants of the dictionary entries')
     arg_parser.add_argument('--min-length', '-m', type=int, default=4, help='minimum acronym length (default=4)')
-    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH, help=f"path to the dictionary file (default={visie.DICT_PATH})")
-    arg_parser.add_argument('--backronym', '-b', action='store_true', help='search for backronyms instead of generating acronyms')
-    
+    arg_parser.add_argument('--backronym', '-b', action='store_true', help='search for backronyms instead of '
+                                                                           'generating acronyms')
+    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH,
+                            help=f"path to the dictionary file (default={visie.DICT_PATH})")
+
     args = arg_parser.parse_args(argv[1:])
+
+    if not os.path.exists(args.dict):
+        sys.stderr.write(f"{args.dict} does not exist!\n\nEnsure that a word list is installed.\nOn most Linux "
+                         f"distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n")
+        exit(1)
 
     if args.backronym:
         for acronym in args.CONSTRAINT:
             for backronym in visie.backronyms(acronym, min_length=args.min_length, dict_path=args.dict):
                 sys.stdout.write(f"{' '.join(backronym)}\n")
-    else:
-        constraints = []
-        for arg in args.CONSTRAINT:
-            constraints.append(parser.Parser(arg).parse())
-        if len(constraints) == 1:
-            constraints = constraints[0]
-        else:
-            constraints = visie.AnyOfConstraint(constraints)
+        exit(0)
 
-        for acronym in visie.generate(constraints, min_length=args.min_length, use_variants=args.use_variants, dict_path=args.dict):
+    constraints = []
+    for arg in args.CONSTRAINT:
+        constraints.append(parser.Parser(arg).parse())
+    if len(constraints) == 1:
+        constraints = constraints[0]
+    else:
+        constraints = visie.AnyOfConstraint(constraints)
+
+    try:
+        for acronym in visie.generate(
+                constraints,
+                min_length=args.min_length,
+                use_variants=args.use_variants,
+                dict_path=args.dict
+        ):
             sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    except parser.ParseException as e:
+        sys.stderr.write(str(e))
+        exit(1)
+    except KeyboardInterrupt:
+        exit(1)
 
 
 if __name__ == '__main__':

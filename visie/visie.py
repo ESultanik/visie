@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import itertools
 import os
-from typing import FrozenSet, Iterable, Iterator, List, Optional as OptionalType, Set, Tuple
+from typing import FrozenSet, Iterable, Iterator, Optional, Set, Tuple
 
 from . import variants
 
@@ -9,12 +9,12 @@ DICT_PATH = os.path.join(os.path.sep, 'usr', 'share', 'dict', 'words')
 
 
 class Acronym:
-    def __init__(self, *matches: str, remainder: OptionalType[str] = None):
+    def __init__(self, *matches: str, remainder: Optional[str] = None):
         self._matches: Tuple[str, ...] = matches
-        self._remainder: OptionalType[str] = remainder
+        self._remainder: Optional[str] = remainder
 
     @property
-    def remainder(self) -> OptionalType[str]:
+    def remainder(self) -> Optional[str]:
         return self._remainder
 
     def name(self) -> str:
@@ -110,7 +110,7 @@ class AnyOfConstraint(Constraint):
     BEGIN_DELIM = "{"
     END_DELIM = "}"
 
-    def _match(self, remainder: OptionalType[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
         if remainder is None:
             remainder = ""
         for i, child in enumerate(children):
@@ -136,7 +136,7 @@ class OrderedConstraint(Constraint):
     BEGIN_DELIM = '<'
     END_DELIM = '>'
 
-    def _match(self, remainder: OptionalType[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
         if not children:
             return
         if remainder is None:
@@ -163,7 +163,7 @@ class OrderedConstraint(Constraint):
 
 class AnyOrderedConstraint(Constraint):
     """any can occur, but must be in order"""
-    def _match(self, remainder: OptionalType[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
         if not children:
             return
         if remainder is None:
@@ -193,7 +193,7 @@ class AllOfConstraint(Constraint):
     BEGIN_DELIM = '['
     END_DELIM = ']'
 
-    def _match(self, remainder: OptionalType[str], children: FrozenSet[int]) -> Iterator[Acronym]:
+    def _match(self, remainder: Optional[str], children: FrozenSet[int]) -> Iterator[Acronym]:
         if remainder is None:
             remainder = ""
         for i, child in ((c, self.children[c]) for c in children):
@@ -252,7 +252,7 @@ class Wildcard(Constraint):
         return 'Wildcard()'
 
 
-class Optional(OrderedConstraint):
+class OptionalConstraint(OrderedConstraint):
     def match(self, word) -> Iterator[Acronym]:
         return itertools.chain((Acronym(remainder=word),), super().match(word))
 

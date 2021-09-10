@@ -120,7 +120,7 @@ class Parser:
                     if not children:
                         raise Exception(f"{str(next_token)}\nUnexpected '?' token")
                     self._tokenizer.pop()
-                    children[-1] = visie.Optional([children[-1]])
+                    children[-1] = visie.OptionalConstraint([children[-1]])
                 elif next_token.token == '.':
                     self._tokenizer.pop()
                     children.append(visie.Wildcard())

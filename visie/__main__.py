@@ -92,6 +92,9 @@ The name `visie` was discovered this way:
                 dict_path=args.dict
         ):
             sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    except parser.ParseException as e:
+        sys.stderr.write(str(e))
+        exit(1)
     except KeyboardInterrupt:
         exit(1)
 

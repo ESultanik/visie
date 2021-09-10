@@ -1,5 +1,8 @@
 # Visie is a Simple Initialism Enumerator
 
+[![PyPI version](https://badge.fury.io/py/visie.svg)](https://badge.fury.io/py/visie)
+[![Tests](https://github.com/esultanik/visie/workflows/tests/badge.svg)](https://github.com/esultanik/visie/actions)
+
 It helps you name things with acronyms.
 
 ## Installation

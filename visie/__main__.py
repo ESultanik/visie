@@ -1,7 +1,9 @@
 import argparse
+import os
 import sys
 
 from . import visie, parser
+
 
 def main(argv=None):
     if argv is None:
@@ -70,7 +72,8 @@ The name `visie` was discovered this way:
     arg_parser.add_argument('--use-variants', '-u', action='store_true', help='use variants of the dictionary entries')
     arg_parser.add_argument('--min-length', '-m', type=int, default=4, help='minimum acronym length (default=4)')
     
-    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH, help=f"path to the dictionary file (default={visie.DICT_PATH})")
+    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH,
+                            help=f"path to the dictionary file (default={visie.DICT_PATH})")
     
     args = arg_parser.parse_args(argv[1:])
 
@@ -82,8 +85,25 @@ The name `visie` was discovered this way:
     else:
         constraints = visie.AnyOfConstraint(constraints)
 
-    for acronym in visie.generate(constraints, min_length=args.min_length, use_variants=args.use_variants, dict_path=args.dict):
-        sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    if not os.path.exists(args.dict):
+        sys.stderr.write(f"{args.dict} does not exist!\n\nEnsure that a word list is installed.\nOn most Linux "
+                         f"distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n")
+        exit(1)
+
+    try:
+        for acronym in visie.generate(
+                constraints,
+                min_length=args.min_length,
+                use_variants=args.use_variants,
+                dict_path=args.dict
+        ):
+            sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    except parser.ParseException as e:
+        sys.stderr.write(str(e))
+        exit(1)
+    except KeyboardInterrupt:
+        exit(1)
+
 
 if __name__ == '__main__':
     main(sys.argv)

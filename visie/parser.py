@@ -15,8 +15,12 @@ class Token:
         self.fulltext: str = fulltext
 
     def __str__(self) -> str:
-        num_newlines = self.fulltext
-        return f"{self.fulltext}\n{' ' * self.offset}{'^' * len(self.token)}"
+        line_start = self.fulltext.rfind("\n", 0, self.offset) + 1
+        line_end = self.fulltext.find("\n", self.offset)
+        if line_end < 0:
+            line_end = len(self.fulltext)
+        line = self.fulltext[line_start:line_end]
+        return f"{line}\n{' ' * (self.offset - line_start)}{'^' * len(self.token)}"
 
     def __repr__(self) -> str:
         return (
@@ -41,7 +45,7 @@ def tokenize(text: str) -> Iterator[Token]:
         elif ord("a") <= ord(c.lower()) <= ord("z"):
             word += c
         else:
-            raise ParseException(f'{text}\n{" " * (len(text) - i)}^\nIllegal token "{c}"')
+            raise ParseException(f'{Token(c, i, text)!s}\nIllegal token "{c}"')
     if word:
         yield Token(word, len(text) - len(word), text)
 

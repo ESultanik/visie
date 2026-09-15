@@ -2,7 +2,6 @@ import argparse
 import os
 import sys
 from collections.abc import Sequence
-from pathlib import Path
 
 from . import parser, visie
 
@@ -79,12 +78,17 @@ The name `visie` was discovered this way:
         "--min-length", "-m", type=int, default=4, help="minimum acronym length (default=4)"
     )
 
+    search_path = "\n".join(f"  {path}" for path in visie.DICT_SEARCH_PATH)
     arg_parser.add_argument(
         "--dict",
         "-d",
         type=str,
-        default=visie.DICT_PATH,
-        help=f"path to the dictionary file (default={visie.DICT_PATH})",
+        default=None,
+        help=(
+            f"path to the dictionary file\nby default, visie reads the path from the "
+            f"{visie.DICT_ENV_VAR} environment\nvariable, and falls back to the first of these "
+            f"that it can read:\n{search_path}"
+        ),
     )
 
     return arg_parser
@@ -125,13 +129,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         constraints = _parse_constraints(args.CONSTRAINT)
 
-        if not Path(args.dict).exists():
-            sys.stderr.write(
-                f"{args.dict} does not exist!\n\nEnsure that a word list is installed.\nOn most "
-                f"Linux distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n"
-            )
-            return 1
-
         for acronym in visie.generate(
             constraints,
             min_length=args.min_length,
@@ -139,7 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             dict_path=args.dict,
         ):
             sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
-    except parser.ParseException as e:
+    except (parser.ParseException, visie.DictionaryNotFoundError) as e:
         sys.stderr.write(f"{e}\n")
         return 1
     except KeyboardInterrupt:

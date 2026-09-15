@@ -19,7 +19,10 @@ class Token:
         return f"{self.fulltext}\n{' ' * self.offset}{'^' * len(self.token)}"
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}(token={self.token!r}, offset={self.offset!r}, fulltext={self.fulltext!r})"
+        return (
+            f"{type(self).__name__}(token={self.token!r}, "
+            f"offset={self.offset!r}, fulltext={self.fulltext!r})"
+        )
 
 
 def tokenize(text: str) -> Iterator[Token]:

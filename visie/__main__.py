@@ -12,7 +12,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     arg_parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        description="Visie is a simple initialism enumerator. It helps you name things with acronyms.",
+        description=(
+            "Visie is a simple initialism enumerator. It helps you name things with acronyms."
+        ),
         epilog="""By default, visie will find initialisms and acronyms
 that contain any subset of the provided words, in any order:
 
@@ -67,7 +69,8 @@ Finally, you can create recursive acronyms by using a period as a wildcard:
 
 The name `visie` was discovered this way:
 
-  $ visie '<<. is? a?>? (efficient simple magical) recursive? (acronym initialism) (name word)? (generator enumerator)>'
+  $ visie '<<. is? a?>? (efficient simple magical) recursive? """
+        """(acronym initialism) (name word)? (generator enumerator)>'
 """,
     )
     arg_parser.add_argument("CONSTRAINT", type=str, nargs="+", help="a constraint (see below)")

@@ -1,7 +1,7 @@
 import unittest
 
 import visie
-from visie.parser import ParseException, Parser, Token, tokenize
+from visie.parser import ParseException, Parser, Token, Tokenizer, tokenize
 
 
 class TestParser(unittest.TestCase):
@@ -31,6 +31,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual("gamma delta", line)
         self.assertEqual(caret.index("^"), line.index("delta"))
         self.assertEqual("^" * len("delta"), caret.strip())
+
+    def test_tokenizer_is_iterable(self):
+        """Iterating a `Tokenizer` stops instead of raising `RuntimeError` (PEP 479)."""
+        self.assertEqual(2, len(list(Tokenizer("a b"))))
 
     def test_parse(self):
         self.assertIsInstance(Parser("foo").parse(), visie.DictionaryWord)

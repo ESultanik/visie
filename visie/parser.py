@@ -59,7 +59,11 @@ class Tokenizer:
 
     def __iter__(self) -> Iterator[Token]:
         while True:
-            yield self.pop()
+            try:
+                token = self.pop()
+            except StopIteration:
+                return
+            yield token
 
     def pop(self) -> Token:
         if not self._token_buffer:

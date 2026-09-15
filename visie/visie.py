@@ -1,20 +1,20 @@
-from abc import ABC, abstractmethod
 import itertools
 import os
-from typing import FrozenSet, Iterable, Iterator, Optional, Set, Tuple
+from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 
 from . import variants
 
-DICT_PATH = os.path.join(os.path.sep, 'usr', 'share', 'dict', 'words')
+DICT_PATH = os.path.join(os.path.sep, "usr", "share", "dict", "words")
 
 
 class Acronym:
-    def __init__(self, *matches: str, remainder: Optional[str] = None):
-        self._matches: Tuple[str, ...] = matches
-        self._remainder: Optional[str] = remainder
+    def __init__(self, *matches: str, remainder: str | None = None):
+        self._matches: tuple[str, ...] = matches
+        self._remainder: str | None = remainder
 
     @property
-    def remainder(self) -> Optional[str]:
+    def remainder(self) -> str | None:
         return self._remainder
 
     def name(self) -> str:
@@ -33,7 +33,7 @@ class Acronym:
         return iter(self._matches)
 
     def __str__(self):
-        words = ' '.join(map(str, self))
+        words = " ".join(map(str, self))
         if self.is_partial():
             return f"{words}@{self.remainder}"
         else:
@@ -43,18 +43,18 @@ class Acronym:
         ret = repr(self._matches)
         if self._remainder:
             ret = f"{ret}, remainder={self.remainder!r}"
-        return f"{type(self).__name__}({ret})"        
+        return f"{type(self).__name__}({ret})"
 
 
 class Constraint(ABC):
-    BEGIN_DELIM: str = ''
-    END_DELIM: str = ''
+    BEGIN_DELIM: str = ""
+    END_DELIM: str = ""
 
     def __init__(self, children: Iterable["Constraint"] = ()):
-        self._children: Tuple[Constraint, ...] = tuple(children)
+        self._children: tuple[Constraint, ...] = tuple(children)
 
     @property
-    def children(self) -> Tuple["Constraint", ...]:
+    def children(self) -> tuple["Constraint", ...]:
         return self._children
 
     @abstractmethod
@@ -76,7 +76,7 @@ class Constraint(ABC):
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"
 
     def __repr__(self):
-        return f"{type(self).__name__}({repr(self.children)})"
+        return f"{type(self).__name__}({self.children!r})"
 
 
 class DictionaryWord(Constraint):
@@ -107,10 +107,11 @@ class DictionaryWord(Constraint):
 
 class AnyOfConstraint(Constraint):
     """{any can occur in any order}"""
+
     BEGIN_DELIM = "{"
     END_DELIM = "}"
 
-    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+    def _match(self, remainder: str | None, children: tuple[Constraint, ...]) -> Iterator[Acronym]:
         if remainder is None:
             remainder = ""
         for i, child in enumerate(children):
@@ -118,7 +119,7 @@ class AnyOfConstraint(Constraint):
                 if match:
                     yield match
                 else:
-                    for m in self._match(match.remainder, children[:i] + children[i+1:]):
+                    for m in self._match(match.remainder, children[:i] + children[i + 1 :]):
                         yield match + m
 
     def match(self, word: str) -> Iterator:
@@ -133,10 +134,11 @@ class AnyOfConstraint(Constraint):
 
 class OrderedConstraint(Constraint):
     """<all must occur in order>"""
-    BEGIN_DELIM = '<'
-    END_DELIM = '>'
 
-    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+    BEGIN_DELIM = "<"
+    END_DELIM = ">"
+
+    def _match(self, remainder: str | None, children: tuple[Constraint, ...]) -> Iterator[Acronym]:
         if not children:
             return
         if remainder is None:
@@ -163,7 +165,8 @@ class OrderedConstraint(Constraint):
 
 class AnyOrderedConstraint(Constraint):
     """any can occur, but must be in order"""
-    def _match(self, remainder: Optional[str], children: Tuple[Constraint, ...]) -> Iterator[Acronym]:
+
+    def _match(self, remainder: str | None, children: tuple[Constraint, ...]) -> Iterator[Acronym]:
         if not children:
             return
         if remainder is None:
@@ -190,10 +193,11 @@ class AnyOrderedConstraint(Constraint):
 
 class AllOfConstraint(Constraint):
     """[all must occur in any order]"""
-    BEGIN_DELIM = '['
-    END_DELIM = ']'
 
-    def _match(self, remainder: Optional[str], children: FrozenSet[int]) -> Iterator[Acronym]:
+    BEGIN_DELIM = "["
+    END_DELIM = "]"
+
+    def _match(self, remainder: str | None, children: frozenset[int]) -> Iterator[Acronym]:
         if remainder is None:
             remainder = ""
         for i, child in ((c, self.children[c]) for c in children):
@@ -219,8 +223,9 @@ class AllOfConstraint(Constraint):
 
 class ExactlyOneConstraint(Constraint):
     """(exactly one must occur)"""
-    BEGIN_DELIM = '('
-    END_DELIM = ')'
+
+    BEGIN_DELIM = "("
+    END_DELIM = ")"
 
     def match(self, word: str) -> Iterator[Acronym]:
         for child in self.children:
@@ -246,10 +251,10 @@ class Wildcard(Constraint):
         return 1
 
     def __str__(self):
-        return 'Wildcard<.>'
+        return "Wildcard<.>"
 
     def __repr__(self):
-        return 'Wildcard()'
+        return "Wildcard()"
 
 
 class OptionalConstraint(OrderedConstraint):
@@ -261,21 +266,21 @@ class OptionalConstraint(OrderedConstraint):
 
     def __str__(self):
         if len(self.children) == 1:
-            return f"{str(self.children[0])}?"
+            return f"{self.children[0]!s}?"
         else:
             return f"{super().__str__()}?"
 
 
 def generate(
-        constraints: Constraint,
-        min_length: int = 3,
-        use_variants: bool = False,
-        dict_path: str = DICT_PATH
+    constraints: Constraint,
+    min_length: int = 3,
+    use_variants: bool = False,
+    dict_path: str = DICT_PATH,
 ) -> Iterator[Acronym]:
     min_length = max(constraints.min_length(), min_length)
     max_length = constraints.max_length()
-    with open(dict_path, 'r') as dictionary:
-        yielded: Set[str] = set()
+    with open(dict_path) as dictionary:
+        yielded: set[str] = set()
         dict_words: Iterable[str] = (w.strip() for w in dictionary.readlines())
         if use_variants:
             dict_words = itertools.chain.from_iterable(map(variants.generate_variants, dict_words))

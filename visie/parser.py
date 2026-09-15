@@ -1,4 +1,5 @@
-from typing import Iterable, Iterator, List, Optional, Type, TypeVar, Union
+from collections.abc import Iterable, Iterator
+from typing import TypeVar
 
 from . import visie
 
@@ -15,39 +16,39 @@ class Token:
 
     def __str__(self):
         num_newlines = self.fulltext
-        return f"{self.fulltext}\n{' '*self.offset}{'^'*len(self.token)}"
+        return f"{self.fulltext}\n{' ' * self.offset}{'^' * len(self.token)}"
 
     def __repr__(self):
         return f"{type(self).__name__}(token={self.token!r}, offset={self.offset!r}, fulltext={self.fulltext!r})"
 
 
 def tokenize(text: str) -> Iterator[Token]:
-    word = ''
+    word = ""
     for i, c in enumerate(text):
-        if c in ('(', ')', '[', ']', '{', '}', '<', '>', '?', '.'):
+        if c in ("(", ")", "[", "]", "{", "}", "<", ">", "?", "."):
             if word:
                 yield Token(word, i - len(word), text)
-                word = ''
+                word = ""
             yield Token(c, i, text)
-        elif c == ' ' or c == '\t' or c == '\n' or c == '\r':
+        elif c == " " or c == "\t" or c == "\n" or c == "\r":
             if word:
                 yield Token(word, i - len(word), text)
-                word = ''
+                word = ""
             continue
-        elif ord('a') <= ord(c.lower()) <= ord('z'):
+        elif ord("a") <= ord(c.lower()) <= ord("z"):
             word += c
         else:
-            raise ParseException(f"{text}\n{' '*(len(text)-i)}^\nIllegal token \"{c}\"")
+            raise ParseException(f'{text}\n{" " * (len(text) - i)}^\nIllegal token "{c}"')
     if word:
         yield Token(word, len(text) - len(word), text)
 
 
 class Tokenizer:
-    def __init__(self, text: Union[str, Iterable[Token]]):
+    def __init__(self, text: str | Iterable[Token]):
         if isinstance(text, str):
             text = tokenize(text)
         self._tokens: Iterator[Token] = iter(text)
-        self._token_buffer: List[Token] = []
+        self._token_buffer: list[Token] = []
 
     def __iter__(self) -> Iterator[Token]:
         while True:
@@ -60,7 +61,7 @@ class Tokenizer:
         self._token_buffer = self._token_buffer[1:]
         return ret
 
-    def peek(self) -> Optional[Token]:
+    def peek(self) -> Token | None:
         if not self._token_buffer:
             try:
                 self._token_buffer.append(next(self._tokens))
@@ -75,7 +76,7 @@ class Tokenizer:
         try:
             next_token = self.pop()
             if not next_token.token.startswith(startswith):
-                raise ParseException(f"\n{str(next_token)}\nExpected \"{startswith}\"")
+                raise ParseException(f'\n{next_token!s}\nExpected "{startswith}"')
             return next_token
         except StopIteration:
             raise ParseException(f"Ran out of tokens when looking for {startswith}")
@@ -89,7 +90,7 @@ class Parser:
         self._fulltext: str = text
         self._tokenizer: Tokenizer = Tokenizer(text)
 
-    def _parse(self, constraint_type: Type[C]) -> C:
+    def _parse(self, constraint_type: type[C]) -> C:
         start = self._tokenizer.expect(constraint_type.BEGIN_DELIM)
         children = []
         while True:
@@ -100,28 +101,31 @@ class Parser:
         try:
             self._tokenizer.expect(constraint_type.END_DELIM)
         except Exception as e:
-            raise Exception(f"{str(e)}\nwhen looking for the closing delimiter of\n{str(start)}\n")
+            raise Exception(f"{e!s}\nwhen looking for the closing delimiter of\n{start!s}\n")
         return constraint_type(children)
 
-    def _parse_arguments(self, until: Optional[str] = None) -> List[visie.Constraint]:
-        children: List[visie.Constraint] = []
+    def _parse_arguments(self, until: str | None = None) -> list[visie.Constraint]:
+        children: list[visie.Constraint] = []
         while True:
             next_token = self._tokenizer.peek()
             if next_token is None or next_token.token == until:
                 break
             for constraint_type in (
-                    visie.OrderedConstraint, visie.AllOfConstraint, visie.ExactlyOneConstraint, visie.AnyOfConstraint
+                visie.OrderedConstraint,
+                visie.AllOfConstraint,
+                visie.ExactlyOneConstraint,
+                visie.AnyOfConstraint,
             ):
                 if next_token.token == constraint_type.BEGIN_DELIM:
                     children.append(self._parse(constraint_type))  # type: ignore
                     break
             else:
-                if next_token.token == '?':
+                if next_token.token == "?":
                     if not children:
-                        raise Exception(f"{str(next_token)}\nUnexpected '?' token")
+                        raise Exception(f"{next_token!s}\nUnexpected '?' token")
                     self._tokenizer.pop()
                     children[-1] = visie.OptionalConstraint([children[-1]])
-                elif next_token.token == '.':
+                elif next_token.token == ".":
                     self._tokenizer.pop()
                     children.append(visie.Wildcard())
                 else:
@@ -138,7 +142,7 @@ class Parser:
         """
         children = self._parse_arguments()
         if not children:
-            raise Exception(f"No tokens found while parsing \"{self._fulltext}\"")
+            raise Exception(f'No tokens found while parsing "{self._fulltext}"')
         elif len(children) == 1:
             return children[0]
         else:

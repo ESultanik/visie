@@ -1,5 +1,8 @@
+import heapq
 import itertools
+import math
 import os
+import random
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -26,6 +29,22 @@ class DictionaryNotFoundError(Exception):
             f"Install a wordlist, set the {DICT_ENV_VAR} environment variable to the path of "
             f"one, or pass the path with --dict."
         )
+
+
+class UnmatchedLetterError(Exception):
+    """Raised when no word in the wordlist begins with a required letter."""
+
+    def __init__(self, letter: str, min_word_length: int) -> None:
+        self.letter: str = letter
+        self.min_word_length: int = min_word_length
+        if letter.isalpha():
+            reason = (
+                f"the wordlist holds no word of {min_word_length} or more letters that begins "
+                f"with it"
+            )
+        else:
+            reason = "an acronym can only hold letters"
+        super().__init__(f"cannot expand {letter!r}: {reason}")
 
 
 def _candidates(dict_path: str | Path | None) -> tuple[Path, ...]:
@@ -331,3 +350,92 @@ def generate(
             for match in constraints.matches(word):
                 yielded.add(match.name())
                 yield match
+
+
+def _first_non_letter(acronym: str) -> str:
+    for character in acronym:
+        if not character.isalpha():
+            return character
+    return ""
+
+
+def _word_buckets(
+    acronym: str, min_word_length: int, dict_path: str | Path | None
+) -> tuple[tuple[str, ...], ...]:
+    by_initial: dict[str, list[str]] = {letter: [] for letter in acronym}
+    with find_dictionary(dict_path).open(encoding="utf-8", errors="replace") as dictionary:
+        for line in dictionary:
+            word = line.strip()
+            if len(word) < min_word_length:
+                continue
+            bucket = by_initial.get(word[:1].upper())
+            if bucket is not None:
+                bucket.append(word)
+    for letter in acronym:
+        if not by_initial[letter]:
+            raise UnmatchedLetterError(letter, min_word_length)
+    return tuple(tuple(by_initial[letter]) for letter in acronym)
+
+
+def _candidate_phrases(
+    buckets: tuple[tuple[str, ...], ...], pool: int, seed: int | None
+) -> list[tuple[str, ...]]:
+    if math.prod(len(bucket) for bucket in buckets) <= pool:
+        return list(itertools.product(*buckets))
+    rng = random.Random(seed)
+    sampled = (tuple(rng.choice(bucket) for bucket in buckets) for _ in range(pool))
+    return list(dict.fromkeys(sampled))
+
+
+def _phrase_length(words: tuple[str, ...]) -> int:
+    return sum(len(word) for word in words)
+
+
+# Every knob after the acronym is keyword-only, so the call sites PLR0913 guards against --
+# a row of bare positional values -- cannot be written in the first place.
+def backronyms(  # noqa: PLR0913
+    acronym: str,
+    *,
+    min_word_length: int = 4,
+    limit: int = 10,
+    pool: int = 100_000,
+    seed: int | None = None,
+    dict_path: str | Path | None = None,
+) -> Iterator[Acronym]:
+    """Expand an acronym into phrases whose word initials spell it.
+
+    The space of expansions is far too large to enumerate: four letters over a wordlist of a
+    quarter of a million words already hold about 2.9e16 phrases. Ranking the whole space does
+    not help, because the score is separable, so an exact best-of-K fixes every position but the
+    last one and the results differ only in their final word. This function instead draws a
+    random sample of `pool` phrases and ranks the sample, which keeps the variety that sampling
+    gives and the readability that ranking gives. When the whole space holds no more than `pool`
+    phrases, it is enumerated exactly rather than sampled.
+
+    Phrases rank by total word length, shortest first. That is a crude proxy for how common the
+    words are: a plain wordlist carries no frequency data, so visie cannot tell a familiar short
+    word from an obscure one, and the quality of the results is bounded by the wordlist.
+
+    Args:
+        acronym: The letters to spell, such as `HOPE`. Case does not matter.
+        min_word_length: The length of the shortest word to draw from the wordlist.
+        limit: The greatest number of phrases to yield.
+        pool: The number of phrases to sample before ranking them.
+        seed: The seed of the sampler. Pass an `int` to make the results reproducible.
+        dict_path: The path of a wordlist, or `None` to resolve one the way `find_dictionary`
+            does.
+
+    Yields:
+        Up to `limit` phrases, best ranked first, each as a non-partial `Acronym`.
+
+    Raises:
+        UnmatchedLetterError: If `acronym` holds a character that is not a letter, or a letter
+            that no wordlist entry of `min_word_length` or more characters begins with.
+        DictionaryNotFoundError: If none of the candidate wordlist paths can be read.
+    """
+    letters = acronym.upper()
+    if not letters.isalpha():
+        raise UnmatchedLetterError(_first_non_letter(letters), min_word_length)
+    buckets = _word_buckets(letters, min_word_length, dict_path)
+    ranked = heapq.nsmallest(limit, _candidate_phrases(buckets, pool, seed), key=_phrase_length)
+    return (Acronym(*words) for words in ranked)

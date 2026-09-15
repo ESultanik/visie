@@ -12,7 +12,9 @@ from .visie import (
     ExactlyOneConstraint,
     OptionalConstraint,
     OrderedConstraint,
+    UnmatchedLetterError,
     Wildcard,
+    backronyms,
     find_dictionary,
     generate,
 )
@@ -29,8 +31,10 @@ __all__ = [
     "ExactlyOneConstraint",
     "OptionalConstraint",
     "OrderedConstraint",
+    "UnmatchedLetterError",
     "Wildcard",
     "__version__",
+    "backronyms",
     "find_dictionary",
     "generate",
 ]

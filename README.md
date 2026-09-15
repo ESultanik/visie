@@ -131,6 +131,53 @@ PHON: pleasing home orange noise
 PHONE: pleasing home orange noise expeller
 ```
 
+## Backronyms
+
+Pass `--backronym`, or `-b`, to work the other way around. Give visie an acronym and it finds
+phrases whose word initials spell it:
+
+```
+$ visie --backronym HOPE --seed 8
+HOPE: Helen ogmic pause epulo
+HOPE: haine Olga phase estufa
+HOPE: hunchy oary perique else
+HOPE: Hugh oristic Pomona exon
+HOPE: hoop ought prendre event
+HOPE: howkit Osage platy emcee
+HOPE: hend Owen plan elucidate
+HOPE: hulk octuor peres ectype
+HOPE: hopper orlo Pygmy enraged
+HOPE: hoot ovist Polabian elope
+```
+
+The space of expansions is far too large to search exhaustively: four letters over a wordlist of
+a quarter of a million words hold about 2.9e16 phrases. Visie therefore samples 100,000 of them
+at random and prints the best ranked of the sample. Ranking prefers short words, which stands in
+for common words. It is a crude stand in: a plain wordlist carries no frequency data, so visie
+cannot tell a familiar word from an obscure one, and the quality of the results is bounded by the
+wordlist you point it at. Run the command a few times, and expect to discard most of what it
+prints.
+
+Every run draws a new sample. Pass `--seed` with a whole number to repeat an earlier run. Pass
+`--limit`, or `-n`, to change how many phrases visie prints, and `--min-word-length` to raise the
+length of the shortest word it draws on:
+
+```
+$ visie -b HOPE --seed 8 --min-word-length 6 -n 3
+HOPE: hexact omnist praiser exsect
+HOPE: handful offish patter echoer
+HOPE: hander obelism Phoebe epizoa
+```
+
+`--min-length`, or `-m`, sets the shortest acronym of the default search, so it has no meaning
+here: a backronym is as long as the acronym you pass. When no word in the wordlist begins with one
+of the letters, visie names that letter and exits with status 1:
+
+```
+$ visie -b HOPE --min-word-length 24
+cannot expand 'H': the wordlist holds no word of 24 or more letters that begins with it
+```
+
 ## License
 
 Visie is licensed and distributed under the [AGPLv3](LICENSE) license. [Contact us](https://www.sultanik.com/) if you’re looking for an exception to the terms.

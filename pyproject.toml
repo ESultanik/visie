@@ -76,7 +76,9 @@ blanket-ignore-comment = "error"
 disjoint-cast = "error"
 division-by-zero = "error"
 missing-direct-dependency = "error"
-missing-override-decorator = "error"
+# typing.override arrived in Python 3.12, and visie supports 3.11 without
+# depending on typing_extensions. Revisit when the floor reaches 3.12.
+missing-override-decorator = "ignore"
 missing-type-argument = "error"
 possibly-missing-attribute = "error"
 possibly-missing-import = "error"

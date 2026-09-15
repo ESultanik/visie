@@ -138,24 +138,22 @@ phrases whose word initials spell it:
 
 ```
 $ visie --backronym HOPE --seed 8
-HOPE: Helen ogmic pause epulo
-HOPE: haine Olga phase estufa
-HOPE: hunchy oary perique else
-HOPE: Hugh oristic Pomona exon
-HOPE: hoop ought prendre event
-HOPE: howkit Osage platy emcee
-HOPE: hend Owen plan elucidate
-HOPE: hulk octuor peres ectype
-HOPE: hopper orlo Pygmy enraged
-HOPE: hoot ovist Polabian elope
+HOPE: hyphenation omission preclassification expeditation
+HOPE: hastatosagittate ontogenetically phantasmically elliptically
+HOPE: hermitical outstart Petrarchistical eremitical
+HOPE: holomorphosis odontoplerosis paradidymis epitasis
+HOPE: Heliolitidae overemptiness powderiness expansiveness
+HOPE: hematodystrophy overpay palaeoanthropography eutrophy
+HOPE: Hegelianize ornithivorous pneumatophorous Eocarboniferous
+HOPE: hexabromide opinionable preobtainable epibole
+HOPE: humoristic Occamistic pseudelephant epulotic
+HOPE: hyperemotivity omnitonality preaccessible effectivity
 ```
 
 The space of expansions is far too large to search exhaustively: four letters over a wordlist of
 a quarter of a million words hold about 2.9e16 phrases. Visie therefore samples 100,000 of them
-at random and prints the best ranked of the sample. Ranking prefers short words, which stands in
-for common words. It is a crude stand in: a plain wordlist carries no frequency data, so visie
-cannot tell a familiar word from an obscure one, and the quality of the results is bounded by the
-wordlist you point it at. Run the command a few times, and expect to discard most of what it
+at random and prints the best ranked of the sample. The quality of the results is bounded by the
+wordlist you point it at, so run the command a few times, and expect to discard most of what it
 prints.
 
 Every run draws a new sample. Pass `--seed` with a whole number to repeat an earlier run. Pass
@@ -164,9 +162,9 @@ length of the shortest word it draws on:
 
 ```
 $ visie -b HOPE --seed 8 --min-word-length 6 -n 3
-HOPE: hexact omnist praiser exsect
-HOPE: handful offish patter echoer
-HOPE: hander obelism Phoebe epizoa
+HOPE: hydnocarpate overregulate preindicate ethmoturbinate
+HOPE: horological occlusocervical primatical extemporal
+HOPE: homoeochromatic orbitozygomatic phytomorphic enteradenographic
 ```
 
 `--min-length`, or `-m`, sets the shortest acronym of the default search, so it has no meaning
@@ -176,6 +174,105 @@ of the letters, visie names that letter and exits with status 1:
 ```
 $ visie -b HOPE --min-word-length 24
 cannot expand 'H': the wordlist holds no word of 24 or more letters that begins with it
+```
+
+### Ranking modes
+
+Pass `--rank` to choose what the ranking prefers:
+
+| mode | prefers |
+|------|---------|
+| `brevity` | short words |
+| `rhyme` | words that end alike |
+| `rhythm` | words of equal syllable counts |
+| `harmony` | a blend of the three, and the default |
+
+`brevity` stands in for common words. It is a crude stand in: a plain wordlist carries no
+frequency data, so visie cannot tell a familiar word from an obscure one.
+
+```
+$ visie -b VISIE --seed 1 --rank brevity -n 5
+VISIE: vitta inane same ivin embalm
+VISIE: volage incast Sunna Irfan Eryx
+VISIE: verist inswamp Seljuk Iraq egma
+VISIE: verist ibis surprise Iowan eyra
+VISIE: vice Itea Serapeum Igara Esdras
+```
+
+`rhyme` scores the characters each pair of words shares at the end:
+
+```
+$ visie -b VISIE --seed 1 --rank rhyme -n 5
+VISIE: vireo indecipherableness sluggingly innumerableness equableness
+VISIE: verine intercortical sulcal iatrical epitaphical
+VISIE: venezolano irremovable submissible insurmountable endamageable
+VISIE: verger Ionicization subdelegation internalization edelweiss
+VISIE: venally imperatorially senatorially improvability egotheism
+```
+
+`rhythm` prefers phrases whose words all hold the same number of syllables:
+
+```
+$ visie -b VISIE --seed 1 --rank rhythm -n 5
+VISIE: Vanessa inwrapment suspected issuably expiator
+VISIE: vapulation intervallic successlessly intranatal entosphenal
+VISIE: versableness involucral subrebellion imitancy escharotic
+VISIE: volitant interpledge subunit imposal ethnicon
+VISIE: vividity inelastic superavit incumberment expropriator
+```
+
+`harmony` weighs rhyme most, then shared vowels, and takes off points for uneven syllable counts
+and for length:
+
+```
+$ visie -b VISIE --seed 1 --rank harmony -n 5
+VISIE: vireo indecipherableness sluggingly innumerableness equableness
+VISIE: venezolano irremovable submissible insurmountable endamageable
+VISIE: versification intrication semiforbidding inosculation exocardiac
+VISIE: verine intercortical sulcal iatrical epitaphical
+VISIE: venally imperatorially senatorially improvability egotheism
+```
+
+Visie reads spelling as a stand in for sound, because a plain wordlist carries no pronunciation.
+Every one of these modes therefore approximates how a phrase sounds: they miss rhymes that
+spelling hides, such as `through` and `blue`, and report rhymes that do not sound alike, such as
+`though` and `rough`. The syllable count is an approximation for the same reason, and it
+undercounts words such as `poem` and `idea`, where two adjacent vowel letters belong to separate
+syllables.
+
+### Results that sound alike
+
+Ranking for sound collapses the variety of the endings. Ranked by `harmony` for `HOPE` with seed
+1, the top ten phrases hold 13 distinct three character word endings across their 40 words, even
+though all 40 of those words are different. Five of the ten turn on `-ion`, and the rest on
+`-ous`, `-ic` or `-al`, so the ten read as four results rather than ten.
+
+Visie therefore prints at most one phrase per dominant word ending, the ending that the most of a
+phrase's words share. That raises the same run from 13 distinct endings to 23, and `rhyme` from
+12 to 20. It leaves `brevity` untouched, because short words rarely end alike. Phrases held back
+fill any places left over, so you always get as many phrases as you asked for.
+
+Pass `--allow-similar` to print the ranking as it stands:
+
+```
+$ visie -b HOPE --seed 8 --rank harmony -n 5 --allow-similar
+HOPE: hyphenation omission preclassification expeditation
+HOPE: hastatosagittate ontogenetically phantasmically elliptically
+HOPE: homoiousian oxygenation progeneration exagitation
+HOPE: hermitical outstart Petrarchistical eremitical
+HOPE: hangee ovalization permeation epulation
+```
+
+Three of those five phrases end in `-ion`. The same run without `--allow-similar` replaces two of
+them:
+
+```
+$ visie -b HOPE --seed 8 --rank harmony -n 5
+HOPE: hyphenation omission preclassification expeditation
+HOPE: hastatosagittate ontogenetically phantasmically elliptically
+HOPE: hermitical outstart Petrarchistical eremitical
+HOPE: holomorphosis odontoplerosis paradidymis epitasis
+HOPE: Heliolitidae overemptiness powderiness expansiveness
 ```
 
 ## License

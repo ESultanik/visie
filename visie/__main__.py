@@ -1,11 +1,12 @@
 import argparse
 import os
 import sys
+from collections.abc import Sequence
 
 from . import parser, visie
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv
 
@@ -115,6 +116,8 @@ The name `visie` was discovered this way:
         exit(1)
     except KeyboardInterrupt:
         exit(130)  # see: https://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
+
+    return 0
 
 
 if __name__ == "__main__":

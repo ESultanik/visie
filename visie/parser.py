@@ -9,16 +9,16 @@ class ParseException(Exception):
 
 
 class Token:
-    def __init__(self, token: str, offset: int, fulltext: str):
+    def __init__(self, token: str, offset: int, fulltext: str) -> None:
         self.token: str = token
         self.offset: int = offset
         self.fulltext: str = fulltext
 
-    def __str__(self):
+    def __str__(self) -> str:
         num_newlines = self.fulltext
         return f"{self.fulltext}\n{' ' * self.offset}{'^' * len(self.token)}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}(token={self.token!r}, offset={self.offset!r}, fulltext={self.fulltext!r})"
 
 
@@ -44,7 +44,7 @@ def tokenize(text: str) -> Iterator[Token]:
 
 
 class Tokenizer:
-    def __init__(self, text: str | Iterable[Token]):
+    def __init__(self, text: str | Iterable[Token]) -> None:
         if isinstance(text, str):
             text = tokenize(text)
         self._tokens: Iterator[Token] = iter(text)
@@ -69,7 +69,7 @@ class Tokenizer:
                 return None
         return self._token_buffer[0]
 
-    def push(self, token: Token):
+    def push(self, token: Token) -> None:
         self._token_buffer = [token] + self._token_buffer
 
     def expect(self, startswith: str) -> Token:
@@ -86,7 +86,7 @@ C = TypeVar("C", bound=visie.Constraint)
 
 
 class Parser:
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self._fulltext: str = text
         self._tokenizer: Tokenizer = Tokenizer(text)
 
@@ -117,7 +117,7 @@ class Parser:
                 visie.AnyOfConstraint,
             ):
                 if next_token.token == constraint_type.BEGIN_DELIM:
-                    children.append(self._parse(constraint_type))  # type: ignore
+                    children.append(self._parse(constraint_type))
                     break
             else:
                 if next_token.token == "?":

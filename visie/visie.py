@@ -9,7 +9,7 @@ DICT_PATH = os.path.join(os.path.sep, "usr", "share", "dict", "words")
 
 
 class Acronym:
-    def __init__(self, *matches: str, remainder: str | None = None):
+    def __init__(self, *matches: str, remainder: str | None = None) -> None:
         self._matches: tuple[str, ...] = matches
         self._remainder: str | None = remainder
 
@@ -26,20 +26,20 @@ class Acronym:
     def __add__(self, acronym: "Acronym") -> "Acronym":
         return Acronym(*(self._matches + acronym._matches), remainder=acronym.remainder)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return not self.is_partial()
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._matches)
 
-    def __str__(self):
+    def __str__(self) -> str:
         words = " ".join(map(str, self))
         if self.is_partial():
             return f"{words}@{self.remainder}"
         else:
             return words
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         ret = repr(self._matches)
         if self._remainder:
             ret = f"{ret}, remainder={self.remainder!r}"
@@ -50,7 +50,7 @@ class Constraint(ABC):
     BEGIN_DELIM: str = ""
     END_DELIM: str = ""
 
-    def __init__(self, children: Iterable["Constraint"] = ()):
+    def __init__(self, children: Iterable["Constraint"] = ()) -> None:
         self._children: tuple[Constraint, ...] = tuple(children)
 
     @property
@@ -72,15 +72,15 @@ class Constraint(ABC):
     def matches(self, word: str) -> Iterator[Acronym]:
         return filter(lambda m: bool(m), self.match(word))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__name__}({self.children!r})"
 
 
 class DictionaryWord(Constraint):
-    def __init__(self, word: str):
+    def __init__(self, word: str) -> None:
         super().__init__()
         self._word: str = word
 
@@ -98,10 +98,10 @@ class DictionaryWord(Constraint):
     def max_length(self) -> int:
         return 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.word
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.word)
 
 
@@ -122,7 +122,7 @@ class AnyOfConstraint(Constraint):
                     for m in self._match(match.remainder, children[:i] + children[i + 1 :]):
                         yield match + m
 
-    def match(self, word: str) -> Iterator:
+    def match(self, word: str) -> Iterator[Acronym]:
         yield from self._match(word, self.children)
 
     def min_length(self) -> int:
@@ -211,7 +211,7 @@ class AllOfConstraint(Constraint):
                     for m in self._match(match.remainder, children - {i}):
                         yield match + m
 
-    def match(self, word) -> Iterator[Acronym]:
+    def match(self, word: str) -> Iterator[Acronym]:
         yield from self._match(word, frozenset(range(len(self.children))))
 
     def min_length(self) -> int:
@@ -250,21 +250,21 @@ class Wildcard(Constraint):
     def max_length(self) -> int:
         return 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Wildcard<.>"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Wildcard()"
 
 
 class OptionalConstraint(OrderedConstraint):
-    def match(self, word) -> Iterator[Acronym]:
+    def match(self, word: str) -> Iterator[Acronym]:
         return itertools.chain((Acronym(remainder=word),), super().match(word))
 
-    def min_length(self):
+    def min_length(self) -> int:
         return 0
 
-    def __str__(self):
+    def __str__(self) -> str:
         if len(self.children) == 1:
             return f"{self.children[0]!s}?"
         else:

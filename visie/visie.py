@@ -163,34 +163,6 @@ class OrderedConstraint(Constraint):
         return sum(c.max_length() for c in self.children)
 
 
-class AnyOrderedConstraint(Constraint):
-    """any can occur, but must be in order"""
-
-    def _match(self, remainder: str | None, children: tuple[Constraint, ...]) -> Iterator[Acronym]:
-        if not children:
-            return
-        if remainder is None:
-            remainder = ""
-        for match in children[0].match(remainder):
-            if match:
-                if len(children) == 1:
-                    yield match
-            elif len(children) == 1:
-                yield match
-            else:
-                for m in self._match(match.remainder, children[1:]):
-                    yield match + m
-
-    def match(self, word: str) -> Iterator[Acronym]:
-        yield from self._match(word, self.children)
-
-    def min_length(self) -> int:
-        return 0
-
-    def max_length(self) -> int:
-        return sum(c.max_length() for c in self.children)
-
-
 class AllOfConstraint(Constraint):
     """[all must occur in any order]"""
 

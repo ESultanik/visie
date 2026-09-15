@@ -1,11 +1,11 @@
 import itertools
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
+from pathlib import Path
 
 from . import variants
 
-DICT_PATH = os.path.join(os.path.sep, "usr", "share", "dict", "words")
+DICT_PATH = str(Path("/usr/share/dict/words"))
 
 
 class Acronym:
@@ -279,14 +279,16 @@ def generate(
 ) -> Iterator[Acronym]:
     min_length = max(constraints.min_length(), min_length)
     max_length = constraints.max_length()
-    with open(dict_path) as dictionary:
+    with Path(dict_path).open(encoding="utf-8", errors="replace") as dictionary:
         yielded: set[str] = set()
-        dict_words: Iterable[str] = (w.strip() for w in dictionary.readlines())
+        dict_words: Iterable[str] = (w.strip() for w in dictionary)
         if use_variants:
             dict_words = (
                 variant for w in dict_words for variant in variants.generate_variants(w, max_length)
             )
         for word in dict_words:
+            # Every constraint consumes exactly one letter, so a complete match is named
+            # by the uppercased word it matched.
             if word.upper() in yielded:
                 continue
             word_len = len(word)

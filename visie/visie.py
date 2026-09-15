@@ -18,7 +18,7 @@ class Acronym:
         return self._remainder
 
     def name(self) -> str:
-        return "".join(map(lambda w: w[0].upper(), self))
+        return "".join(w[0].upper() for w in self)
 
     def is_partial(self) -> bool:
         return bool(self._remainder)
@@ -70,7 +70,7 @@ class Constraint(ABC):
         raise NotImplementedError()
 
     def matches(self, word: str) -> Iterator[Acronym]:
-        return filter(lambda m: bool(m), self.match(word))
+        return filter(None, self.match(word))
 
     def __str__(self) -> str:
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"

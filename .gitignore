@@ -17,3 +17,7 @@ venv/
 .idea/
 .vscode/
 .claude/worktrees/
+
+# visie has no runtime dependencies; the lockfile would pin only dev tools,
+# which pyproject.toml already range-pins.
+uv.lock

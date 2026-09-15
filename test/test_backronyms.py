@@ -112,9 +112,16 @@ class TestBackronyms(unittest.TestCase):
         """A pool as small as the limit is an unranked sample: ranking cannot choose anything."""
         for seed in (1, 2, 3):
             with self.subTest(seed=seed):
-                ranked = backronyms("HOPE", limit=10, seed=seed, dict_path=LOCAL_DICT_PATH)
+                ranked = backronyms(
+                    "HOPE", limit=10, seed=seed, rank="brevity", dict_path=LOCAL_DICT_PATH
+                )
                 sampled = backronyms(
-                    "HOPE", limit=10, pool=10, seed=seed, dict_path=LOCAL_DICT_PATH
+                    "HOPE",
+                    limit=10,
+                    pool=10,
+                    seed=seed,
+                    rank="brevity",
+                    dict_path=LOCAL_DICT_PATH,
                 )
                 self.assertLess(mean_word_length(ranked), mean_word_length(sampled))
 

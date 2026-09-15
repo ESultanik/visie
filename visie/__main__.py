@@ -73,18 +73,35 @@ With --backronym, visie works the other way around: it reads
 CONSTRAINT as an acronym and expands it into phrases whose
 word initials spell it:
 
-  $ visie --backronym HOPE --seed 8
+  $ visie --backronym HOPE --seed 8 -n 5
+  HOPE: hyphenation omission preclassification expeditation
+  HOPE: hastatosagittate ontogenetically phantasmically elliptically
+  HOPE: hermitical outstart Petrarchistical eremitical
+  HOPE: holomorphosis odontoplerosis paradidymis epitasis
+  HOPE: Heliolitidae overemptiness powderiness expansiveness
+
+The expansions are far too many to search exhaustively, so visie
+samples 100,000 of them and prints the best ranked of the sample.
+--rank picks what the ranking prefers: brevity for short words,
+rhyme for words that end alike, rhythm for words of equal syllable
+counts, and harmony, the default, for a blend of the three:
+
+  $ visie -b HOPE --seed 8 --rank brevity -n 5
   HOPE: Helen ogmic pause epulo
   HOPE: haine Olga phase estufa
   HOPE: hunchy oary perique else
   HOPE: Hugh oristic Pomona exon
   HOPE: hoop ought prendre event
 
-The expansions are far too many to search exhaustively, so visie
-samples 100,000 of them and prints the best ranked of the sample.
-Ranking prefers short words, which is a crude stand in for common
-words, so the quality of the results is bounded by the wordlist.
+Rhyme, rhythm and harmony read spelling as a stand in for sound, so
+they miss rhymes that spelling hides, such as through and blue, and
+report rhymes that do not sound alike, such as though and rough.
+They also tend to pick phrases that all end the same way, so visie
+prints at most one phrase per dominant word ending. Pass
+--allow-similar for the ranking as it stands.
+
 Every run draws a new sample; pass --seed to repeat an earlier one.
+The quality of the results is bounded by the wordlist.
 """,
     )
     arg_parser.add_argument("CONSTRAINT", type=str, nargs="+", help="a constraint (see below)")
@@ -115,6 +132,27 @@ Every run draws a new sample; pass --seed to repeat an earlier one.
         type=int,
         default=10,
         help="maximum number of backronyms to print (default=10)",
+    )
+    arg_parser.add_argument(
+        "--rank",
+        type=str,
+        choices=visie.RANK_MODES,
+        default=visie.DEFAULT_RANK,
+        help=(
+            f"what the backronym ranking prefers (default={visie.DEFAULT_RANK})\n"
+            "brevity: short words\n"
+            "rhyme:   words that end alike\n"
+            "rhythm:  words of equal syllable counts\n"
+            "harmony: a blend of the three"
+        ),
+    )
+    arg_parser.add_argument(
+        "--allow-similar",
+        action="store_true",
+        help=(
+            "print the best ranked backronyms even when they all end the same way\n"
+            "by default, visie prints at most one backronym per dominant word ending"
+        ),
     )
     arg_parser.add_argument(
         "--seed",
@@ -158,6 +196,8 @@ def _write_backronyms(args: argparse.Namespace) -> None:
         min_word_length=args.min_word_length,
         limit=args.limit,
         seed=args.seed,
+        rank=args.rank,
+        allow_similar=args.allow_similar,
         dict_path=args.dict,
     ):
         sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")

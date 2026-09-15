@@ -1,17 +1,17 @@
 import argparse
 import os
 import sys
+from collections.abc import Sequence
 
-from . import visie, parser
+from . import parser, visie
 
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-
+def _build_arg_parser() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        description='Visie is a simple initialism enumerator. It helps you name things with acronyms.',
+        description=(
+            "Visie is a simple initialism enumerator. It helps you name things with acronyms."
+        ),
         epilog="""By default, visie will find initialisms and acronyms
 that contain any subset of the provided words, in any order:
 
@@ -66,44 +66,87 @@ Finally, you can create recursive acronyms by using a period as a wildcard:
 
 The name `visie` was discovered this way:
 
-  $ visie '<<. is? a?>? (efficient simple magical) recursive? (acronym initialism) (name word)? (generator enumerator)>'
-""")
-    arg_parser.add_argument('CONSTRAINT', type=str, nargs='+', help='a constraint (see below)')
-    arg_parser.add_argument('--use-variants', '-u', action='store_true', help='use variants of the dictionary entries')
-    arg_parser.add_argument('--min-length', '-m', type=int, default=4, help='minimum acronym length (default=4)')
-    
-    arg_parser.add_argument('--dict', '-d', type=str, default=visie.DICT_PATH,
-                            help=f"path to the dictionary file (default={visie.DICT_PATH})")
-    
-    args = arg_parser.parse_args(argv[1:])
+  $ visie '<<. is? a?>? (efficient simple magical) recursive? """
+        """(acronym initialism) (name word)? (generator enumerator)>'
+""",
+    )
+    arg_parser.add_argument("CONSTRAINT", type=str, nargs="+", help="a constraint (see below)")
+    arg_parser.add_argument(
+        "--use-variants", "-u", action="store_true", help="use variants of the dictionary entries"
+    )
+    arg_parser.add_argument(
+        "--min-length", "-m", type=int, default=4, help="minimum acronym length (default=4)"
+    )
 
-    constraints = []
-    for arg in args.CONSTRAINT:
-        constraints.append(parser.Parser(arg).parse())
+    search_path = "\n".join(f"  {path}" for path in visie.DICT_SEARCH_PATH)
+    arg_parser.add_argument(
+        "--dict",
+        "-d",
+        type=str,
+        default=None,
+        help=(
+            f"path to the dictionary file\nby default, visie reads the path from the "
+            f"{visie.DICT_ENV_VAR} environment\nvariable, and falls back to the first of these "
+            f"that it can read:\n{search_path}"
+        ),
+    )
+
+    return arg_parser
+
+
+def _parse_constraints(arguments: Sequence[str]) -> visie.Constraint:
+    constraints = [parser.Parser(arg).parse() for arg in arguments]
     if len(constraints) == 1:
-        constraints = constraints[0]
-    else:
-        constraints = visie.AnyOfConstraint(constraints)
+        return constraints[0]
+    return visie.AnyOfConstraint(constraints)
 
-    if not os.path.exists(args.dict):
-        sys.stderr.write(f"{args.dict} does not exist!\n\nEnsure that a word list is installed.\nOn most Linux "
-                         f"distributions, try:\n    `apt-cache search wordlist|grep ^w|sort`\n\n")
-        exit(1)
+
+def _discard_stdout() -> None:
+    """Point the stdout file descriptor at the null device.
+
+    Once the process reading our output has closed the pipe, whatever is still buffered can
+    never be written. Redirecting the descriptor lets interpreter shutdown flush that buffer
+    without reporting a second, confusing error on top of the one already handled.
+    """
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, sys.stdout.fileno())
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command line interface.
+
+    Args:
+        argv: The full argument vector, including the program name. Defaults to `sys.argv`.
+
+    Returns:
+        The process exit status.
+    """
+    if argv is None:
+        argv = sys.argv
+
+    args = _build_arg_parser().parse_args(argv[1:])
 
     try:
+        constraints = _parse_constraints(args.CONSTRAINT)
+
         for acronym in visie.generate(
-                constraints,
-                min_length=args.min_length,
-                use_variants=args.use_variants,
-                dict_path=args.dict
+            constraints,
+            min_length=args.min_length,
+            use_variants=args.use_variants,
+            dict_path=args.dict,
         ):
             sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
-    except parser.ParseException as e:
-        sys.stderr.write(str(e))
-        exit(1)
+    except (parser.ParseException, visie.DictionaryNotFoundError) as e:
+        sys.stderr.write(f"{e}\n")
+        return 1
     except KeyboardInterrupt:
-        exit(130)  # see: https://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
+        return 130  # see: https://tldp.org/LDP/abs/html/exitcodes.html#EXITCODESREF
+    except BrokenPipeError:
+        _discard_stdout()
+        return 141  # 128 + SIGPIPE
+
+    return 0
 
 
-if __name__ == '__main__':
-    main(sys.argv)
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

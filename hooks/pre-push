@@ -1,15 +1,33 @@
 #!/bin/sh
+#
+# Opt-in pre-push hook for visie. Enable it with:
+#
+#     git config core.hooksPath ./hooks
 
-which pytest >/dev/null 2>/dev/null
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-  cat << \EOF
-pytest is not installed! Run this from the root of the it-depends repo:
+set -u
 
-    pip3 install -e .[dev]
+# Redirect output to stderr.
+exec 1>&2
+
+if ! command -v uv >/dev/null 2>&1; then
+  cat <<\EOF
+Error: uv is not installed, so the tests cannot run.
+
+Install uv from https://docs.astral.sh/uv/getting-started/installation/, then
+run this from the root of the repo:
+
+    uv sync
 EOF
   exit 1
 fi
 
-pytest test --ignore test/repos
-exit $?
+echo "Running tests..."
+if ! uv run pytest; then
+  cat <<\EOF
+
+Failed the tests. Fix them, then run:
+
+    uv run pytest
+EOF
+  exit 1
+fi

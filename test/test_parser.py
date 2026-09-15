@@ -23,3 +23,9 @@ class TestParser(unittest.TestCase):
         self.assertIsInstance(Parser("(foo bar)").parse(), visie.ExactlyOneConstraint)
         self.assertIsInstance(Parser("foo?").parse(), visie.OptionalConstraint)
         self.assertIsInstance(Parser(".").parse(), visie.Wildcard)
+
+    def test_parse_errors(self):
+        """Every malformed constraint raises `ParseException`, never a bare exception."""
+        for constraint in ("<abc", "?abc", "", "(abc"):
+            with self.subTest(constraint=constraint), self.assertRaises(ParseException):
+                Parser(constraint).parse()

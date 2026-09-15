@@ -1,8 +1,10 @@
 __version__ = "0.2.0"
 
 from .visie import (
+    DEFAULT_RANK,
     DICT_ENV_VAR,
     DICT_SEARCH_PATH,
+    RANK_MODES,
     Acronym,
     AllOfConstraint,
     AnyOfConstraint,
@@ -12,6 +14,7 @@ from .visie import (
     ExactlyOneConstraint,
     OptionalConstraint,
     OrderedConstraint,
+    UnknownRankError,
     UnmatchedLetterError,
     Wildcard,
     backronyms,
@@ -20,8 +23,10 @@ from .visie import (
 )
 
 __all__ = [
+    "DEFAULT_RANK",
     "DICT_ENV_VAR",
     "DICT_SEARCH_PATH",
+    "RANK_MODES",
     "Acronym",
     "AllOfConstraint",
     "AnyOfConstraint",
@@ -31,6 +36,7 @@ __all__ = [
     "ExactlyOneConstraint",
     "OptionalConstraint",
     "OrderedConstraint",
+    "UnknownRankError",
     "UnmatchedLetterError",
     "Wildcard",
     "__version__",

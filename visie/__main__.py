@@ -68,6 +68,23 @@ The name `visie` was discovered this way:
 
   $ visie '<<. is? a?>? (efficient simple magical) recursive? """
         """(acronym initialism) (name word)? (generator enumerator)>'
+
+With --backronym, visie works the other way around: it reads
+CONSTRAINT as an acronym and expands it into phrases whose
+word initials spell it:
+
+  $ visie --backronym HOPE --seed 8
+  HOPE: Helen ogmic pause epulo
+  HOPE: haine Olga phase estufa
+  HOPE: hunchy oary perique else
+  HOPE: Hugh oristic Pomona exon
+  HOPE: hoop ought prendre event
+
+The expansions are far too many to search exhaustively, so visie
+samples 100,000 of them and prints the best ranked of the sample.
+Ranking prefers short words, which is a crude stand in for common
+words, so the quality of the results is bounded by the wordlist.
+Every run draws a new sample; pass --seed to repeat an earlier one.
 """,
     )
     arg_parser.add_argument("CONSTRAINT", type=str, nargs="+", help="a constraint (see below)")
@@ -75,7 +92,41 @@ The name `visie` was discovered this way:
         "--use-variants", "-u", action="store_true", help="use variants of the dictionary entries"
     )
     arg_parser.add_argument(
-        "--min-length", "-m", type=int, default=4, help="minimum acronym length (default=4)"
+        "--min-length",
+        "-m",
+        type=int,
+        default=4,
+        help=(
+            "minimum number of letters in a generated acronym (default=4)\n"
+            "this does not apply to --backronym, whose acronym is CONSTRAINT itself"
+        ),
+    )
+    arg_parser.add_argument(
+        "--backronym",
+        "-b",
+        action="store_true",
+        help=(
+            "read CONSTRAINT as an acronym and expand it into phrases\nwhose word initials spell it"
+        ),
+    )
+    arg_parser.add_argument(
+        "--limit",
+        "-n",
+        type=int,
+        default=10,
+        help="maximum number of backronyms to print (default=10)",
+    )
+    arg_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="seed the backronym sampler, so that a run repeats an earlier one",
+    )
+    arg_parser.add_argument(
+        "--min-word-length",
+        type=int,
+        default=4,
+        help="minimum number of letters in each word of a backronym (default=4)",
     )
 
     search_path = "\n".join(f"  {path}" for path in visie.DICT_SEARCH_PATH)
@@ -99,6 +150,17 @@ def _parse_constraints(arguments: Sequence[str]) -> visie.Constraint:
     if len(constraints) == 1:
         return constraints[0]
     return visie.AnyOfConstraint(constraints)
+
+
+def _write_backronyms(args: argparse.Namespace) -> None:
+    for acronym in visie.backronyms(
+        "".join(args.CONSTRAINT),
+        min_word_length=args.min_word_length,
+        limit=args.limit,
+        seed=args.seed,
+        dict_path=args.dict,
+    ):
+        sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
 
 
 def _discard_stdout() -> None:
@@ -127,16 +189,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(argv[1:])
 
     try:
-        constraints = _parse_constraints(args.CONSTRAINT)
+        if args.backronym:
+            _write_backronyms(args)
+        else:
+            constraints = _parse_constraints(args.CONSTRAINT)
 
-        for acronym in visie.generate(
-            constraints,
-            min_length=args.min_length,
-            use_variants=args.use_variants,
-            dict_path=args.dict,
-        ):
-            sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
-    except (parser.ParseException, visie.DictionaryNotFoundError) as e:
+            for acronym in visie.generate(
+                constraints,
+                min_length=args.min_length,
+                use_variants=args.use_variants,
+                dict_path=args.dict,
+            ):
+                sys.stdout.write(f"{acronym.name()}: {' '.join(acronym)}\n")
+    except (
+        parser.ParseException,
+        visie.DictionaryNotFoundError,
+        visie.UnmatchedLetterError,
+    ) as e:
         sys.stderr.write(f"{e}\n")
         return 1
     except KeyboardInterrupt:

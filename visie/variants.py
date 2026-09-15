@@ -45,23 +45,71 @@ def unique_everseen(
                 yield element
 
 
-def generate_variants(word: str) -> Iterator[str]:
-    word = word.strip().lower()
-    if not word:
-        return
-    variations: list[tuple[str, ...]] = [(word,)]
+def _spellings(word: str) -> list[tuple[str, ...]]:
+    """Split a word into positions, each listing its original spelling then its alternatives.
+
+    Digraphs in `VARIATION_MAPPING` are consumed as a single position, so `sh` yields one
+    position spelled either `sh` or `xi` rather than two independent positions.
+
+    Args:
+        word: A lowercase word.
+
+    Returns:
+        One tuple per position, whose first element is always the original spelling.
+    """
+    positions: list[tuple[str, ...]] = []
     skip = False
-    for c, next_c in zip(word, word[1:] + " "):
+    for c, next_c in zip(word, word[1:] + " ", strict=True):
         if skip:
             skip = False
             continue
-        skip = False
-        if c + next_c in VARIATION_MAPPING:
-            variations.append(VARIATION_MAPPING[c + next_c])
+        digraph = c + next_c
+        if digraph in VARIATION_MAPPING:
+            positions.append((digraph, *VARIATION_MAPPING[digraph]))
             skip = True
         elif c in VARIATION_MAPPING:
-            variations.append(VARIATION_MAPPING[c])
+            positions.append((c, *VARIATION_MAPPING[c]))
         else:
-            variations.append((c,))
+            positions.append((c,))
+    return positions
 
-    yield from unique_everseen("".join(s) for s in itertools.product(*variations))
+
+def _expand(
+    positions: list[tuple[str, ...]],
+    min_suffix: list[int],
+    index: int,
+    prefix: str,
+    max_length: int | None,
+) -> Iterator[str]:
+    """Walk the spellings depth first, pruning prefixes that cannot fit within `max_length`."""
+    if index >= len(positions):
+        yield prefix
+        return
+    for spelling in positions[index]:
+        candidate = prefix + spelling
+        if max_length is not None and len(candidate) + min_suffix[index + 1] > max_length:
+            continue
+        yield from _expand(positions, min_suffix, index + 1, candidate, max_length)
+
+
+def generate_variants(word: str, max_length: int | None = None) -> Iterator[str]:
+    """Enumerate alternative spellings of `word`, starting with `word` itself.
+
+    Args:
+        word: The word to vary. Leading and trailing whitespace is stripped and the
+            word is lowercased.
+        max_length: If given, only variants of at most this many characters are
+            generated. Prefixes that cannot fit are abandoned before they are expanded,
+            which keeps long words from producing millions of discarded strings.
+
+    Yields:
+        Each distinct variant exactly once, in depth-first order.
+    """
+    word = word.strip().lower()
+    if not word:
+        return
+    positions = _spellings(word)
+    min_suffix = [0] * (len(positions) + 1)
+    for i in reversed(range(len(positions))):
+        min_suffix[i] = min_suffix[i + 1] + min(len(s) for s in positions[i])
+    yield from unique_everseen(_expand(positions, min_suffix, 0, "", max_length))

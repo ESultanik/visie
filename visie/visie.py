@@ -1,11 +1,11 @@
 import itertools
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
+from pathlib import Path
 
 from . import variants
 
-DICT_PATH = os.path.join(os.path.sep, "usr", "share", "dict", "words")
+DICT_PATH = str(Path("/usr/share/dict/words"))
 
 
 class Acronym:
@@ -18,7 +18,7 @@ class Acronym:
         return self._remainder
 
     def name(self) -> str:
-        return "".join(map(lambda w: w[0].upper(), self))
+        return "".join(w[0].upper() for w in self)
 
     def is_partial(self) -> bool:
         return bool(self._remainder)
@@ -70,7 +70,7 @@ class Constraint(ABC):
         raise NotImplementedError()
 
     def matches(self, word: str) -> Iterator[Acronym]:
-        return filter(lambda m: bool(m), self.match(word))
+        return filter(None, self.match(word))
 
     def __str__(self) -> str:
         return f"{self.BEGIN_DELIM}{' '.join(map(str, self.children))}{self.END_DELIM}"
@@ -158,34 +158,6 @@ class OrderedConstraint(Constraint):
 
     def min_length(self) -> int:
         return sum(c.min_length() for c in self.children)
-
-    def max_length(self) -> int:
-        return sum(c.max_length() for c in self.children)
-
-
-class AnyOrderedConstraint(Constraint):
-    """any can occur, but must be in order"""
-
-    def _match(self, remainder: str | None, children: tuple[Constraint, ...]) -> Iterator[Acronym]:
-        if not children:
-            return
-        if remainder is None:
-            remainder = ""
-        for match in children[0].match(remainder):
-            if match:
-                if len(children) == 1:
-                    yield match
-            elif len(children) == 1:
-                yield match
-            else:
-                for m in self._match(match.remainder, children[1:]):
-                    yield match + m
-
-    def match(self, word: str) -> Iterator[Acronym]:
-        yield from self._match(word, self.children)
-
-    def min_length(self) -> int:
-        return 0
 
     def max_length(self) -> int:
         return sum(c.max_length() for c in self.children)
@@ -279,12 +251,16 @@ def generate(
 ) -> Iterator[Acronym]:
     min_length = max(constraints.min_length(), min_length)
     max_length = constraints.max_length()
-    with open(dict_path) as dictionary:
+    with Path(dict_path).open(encoding="utf-8", errors="replace") as dictionary:
         yielded: set[str] = set()
-        dict_words: Iterable[str] = (w.strip() for w in dictionary.readlines())
+        dict_words: Iterable[str] = (w.strip() for w in dictionary)
         if use_variants:
-            dict_words = itertools.chain.from_iterable(map(variants.generate_variants, dict_words))
+            dict_words = (
+                variant for w in dict_words for variant in variants.generate_variants(w, max_length)
+            )
         for word in dict_words:
+            # Every constraint consumes exactly one letter, so a complete match is named
+            # by the uppercased word it matched.
             if word.upper() in yielded:
                 continue
             word_len = len(word)

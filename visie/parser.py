@@ -15,8 +15,12 @@ class Token:
         self.fulltext: str = fulltext
 
     def __str__(self) -> str:
-        num_newlines = self.fulltext
-        return f"{self.fulltext}\n{' ' * self.offset}{'^' * len(self.token)}"
+        line_start = self.fulltext.rfind("\n", 0, self.offset) + 1
+        line_end = self.fulltext.find("\n", self.offset)
+        if line_end < 0:
+            line_end = len(self.fulltext)
+        line = self.fulltext[line_start:line_end]
+        return f"{line}\n{' ' * (self.offset - line_start)}{'^' * len(self.token)}"
 
     def __repr__(self) -> str:
         return (
@@ -33,7 +37,7 @@ def tokenize(text: str) -> Iterator[Token]:
                 yield Token(word, i - len(word), text)
                 word = ""
             yield Token(c, i, text)
-        elif c == " " or c == "\t" or c == "\n" or c == "\r":
+        elif c in {" ", "\t", "\n", "\r"}:
             if word:
                 yield Token(word, i - len(word), text)
                 word = ""
@@ -41,7 +45,7 @@ def tokenize(text: str) -> Iterator[Token]:
         elif ord("a") <= ord(c.lower()) <= ord("z"):
             word += c
         else:
-            raise ParseException(f'{text}\n{" " * (len(text) - i)}^\nIllegal token "{c}"')
+            raise ParseException(f'{Token(c, i, text)!s}\nIllegal token "{c}"')
     if word:
         yield Token(word, len(text) - len(word), text)
 
@@ -55,7 +59,11 @@ class Tokenizer:
 
     def __iter__(self) -> Iterator[Token]:
         while True:
-            yield self.pop()
+            try:
+                token = self.pop()
+            except StopIteration:
+                return
+            yield token
 
     def pop(self) -> Token:
         if not self._token_buffer:
@@ -73,16 +81,16 @@ class Tokenizer:
         return self._token_buffer[0]
 
     def push(self, token: Token) -> None:
-        self._token_buffer = [token] + self._token_buffer
+        self._token_buffer = [token, *self._token_buffer]
 
     def expect(self, startswith: str) -> Token:
         try:
             next_token = self.pop()
-            if not next_token.token.startswith(startswith):
-                raise ParseException(f'\n{next_token!s}\nExpected "{startswith}"')
-            return next_token
-        except StopIteration:
-            raise ParseException(f"Ran out of tokens when looking for {startswith}")
+        except StopIteration as e:
+            raise ParseException(f"Ran out of tokens when looking for {startswith}") from e
+        if not next_token.token.startswith(startswith):
+            raise ParseException(f'\n{next_token!s}\nExpected "{startswith}"')
+        return next_token
 
 
 C = TypeVar("C", bound=visie.Constraint)
@@ -103,8 +111,13 @@ class Parser:
             children += self._parse_arguments(until=constraint_type.END_DELIM)
         try:
             self._tokenizer.expect(constraint_type.END_DELIM)
-        except Exception as e:
-            raise Exception(f"{e!s}\nwhen looking for the closing delimiter of\n{start!s}\n")
+        except ParseException as e:
+            raise ParseException(
+                f"{e!s}\nwhen looking for the closing delimiter of\n{start!s}\n"
+            ) from e
+        if not children:
+            delims = f"{constraint_type.BEGIN_DELIM}{constraint_type.END_DELIM}"
+            raise ParseException(f'{start!s}\nEmpty "{delims}" group at offset {start.offset}')
         return constraint_type(children)
 
     def _parse_arguments(self, until: str | None = None) -> list[visie.Constraint]:
@@ -125,7 +138,7 @@ class Parser:
             else:
                 if next_token.token == "?":
                     if not children:
-                        raise Exception(f"{next_token!s}\nUnexpected '?' token")
+                        raise ParseException(f"{next_token!s}\nUnexpected '?' token")
                     self._tokenizer.pop()
                     children[-1] = visie.OptionalConstraint([children[-1]])
                 elif next_token.token == ".":
@@ -145,7 +158,7 @@ class Parser:
         """
         children = self._parse_arguments()
         if not children:
-            raise Exception(f'No tokens found while parsing "{self._fulltext}"')
+            raise ParseException(f'No tokens found while parsing "{self._fulltext}"')
         elif len(children) == 1:
             return children[0]
         else:

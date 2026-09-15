@@ -1,13 +1,18 @@
 import io
+import os
 import subprocess
 import sys
 import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 
+from visie import DICT_ENV_VAR
 from visie.__main__ import main
 
-LOCAL_DICT_PATH = str(Path(__file__).parent.absolute() / "words")
+TEST_DIR = Path(__file__).parent.absolute()
+LOCAL_DICT_PATH = str(TEST_DIR / "words")
+MISSING_DICT_PATH = str(TEST_DIR / "no-such-wordlist")
 
 
 class TestMain(unittest.TestCase):
@@ -28,6 +33,16 @@ class TestMain(unittest.TestCase):
             status = main(["visie", "<abc"])
         self.assertEqual(1, status)
         self.assertIn("^", stderr.getvalue())
+
+    def test_a_missing_dictionary_is_reported(self):
+        """An unreadable wordlist exits with status 1 instead of raising through `main`."""
+        stderr = io.StringIO()
+        with patch.dict(os.environ, {DICT_ENV_VAR: MISSING_DICT_PATH}), redirect_stderr(stderr):
+            status = main(["visie", "pleasing orange home noise expeller"])
+        self.assertEqual(1, status)
+        self.assertIn(MISSING_DICT_PATH, stderr.getvalue())
+        self.assertIn(DICT_ENV_VAR, stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
 
     def test_broken_pipe(self):
         """Closing the reader mid-stream exits cleanly rather than printing a traceback."""

@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[project]
+name = "visie"
+description = "Visie is a simple initialism enumerator. It helps you name things."
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "Evan Sultanik", email = "evan@sultanik.com" }]
+requires-python = ">=3.11"
+dependencies = []
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Text Processing :: General",
+    "Topic :: Utilities",
+]
+
+[project.scripts]
+visie = "visie.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/ESultanik/visie"
+Repository = "https://github.com/ESultanik/visie"
+
+[dependency-groups]
+dev = ["pytest>=9,<10", "ruff>=0.16,<1.0", "ty>=0.0.81"]
+
+[tool.hatch.version]
+path = "visie/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["/visie", "/README.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["visie"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF", "TRY", "BLE", "FURB", "PTH", "PL"]
+
+[tool.ruff.lint.pylint]
+max-branches = 12
+max-returns = 6
+max-args = 5
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "-q"
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ty.rules]
+blanket-ignore-comment = "error"
+disjoint-cast = "error"
+division-by-zero = "error"
+missing-direct-dependency = "error"
+missing-override-decorator = "error"
+missing-type-argument = "error"
+possibly-missing-attribute = "error"
+possibly-missing-import = "error"
+possibly-unresolved-reference = "error"
+redundant-condition-strict = "error"
+unsound-assignment = "error"
+unsound-return-statement = "error"
+unsound-yield = "error"
+unsupported-dynamic-base = "error"

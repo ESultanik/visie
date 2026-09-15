@@ -58,10 +58,15 @@ README_EXAMPLES: tuple[tuple[str, set[str]], ...] = (
 )
 
 
-def acronyms(constraint: str) -> set[str]:
+def acronyms(constraint: str, use_variants: bool = False) -> set[str]:
     return {
         f"{a.name()}: {' '.join(a)}"
-        for a in generate(Parser(constraint).parse(), min_length=4, dict_path=LOCAL_DICT_PATH)
+        for a in generate(
+            Parser(constraint).parse(),
+            min_length=4,
+            use_variants=use_variants,
+            dict_path=LOCAL_DICT_PATH,
+        )
     }
 
 
@@ -87,3 +92,12 @@ class TestVisie(unittest.TestCase):
             )
         }
         self.assertSetEqual(expected, actual)
+
+    def test_variants_extend_the_results(self):
+        """Variant spellings add results without dropping any of the unmodified ones."""
+        constraint = "pleasing orange home noise expeller"
+        baseline = acronyms(constraint)
+        with_variants = acronyms(constraint, use_variants=True)
+        self.assertTrue(with_variants)
+        self.assertLessEqual(baseline, with_variants)
+        self.assertNotEqual(baseline, with_variants)

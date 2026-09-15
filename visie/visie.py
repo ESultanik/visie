@@ -283,7 +283,9 @@ def generate(
         yielded: set[str] = set()
         dict_words: Iterable[str] = (w.strip() for w in dictionary.readlines())
         if use_variants:
-            dict_words = itertools.chain.from_iterable(map(variants.generate_variants, dict_words))
+            dict_words = (
+                variant for w in dict_words for variant in variants.generate_variants(w, max_length)
+            )
         for word in dict_words:
             if word.upper() in yielded:
                 continue

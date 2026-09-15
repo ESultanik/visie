@@ -3,7 +3,7 @@ import os
 import sys
 from collections.abc import Sequence
 
-from . import parser, visie
+from . import __version__, parser, visie
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -105,6 +105,7 @@ The quality of the results is bounded by the wordlist.
 """,
     )
     arg_parser.add_argument("CONSTRAINT", type=str, nargs="+", help="a constraint (see below)")
+    arg_parser.add_argument("--version", action="version", version=f"visie {__version__}")
     arg_parser.add_argument(
         "--use-variants", "-u", action="store_true", help="use variants of the dictionary entries"
     )

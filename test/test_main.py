@@ -3,11 +3,11 @@ import os
 import subprocess
 import sys
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from visie import DICT_ENV_VAR
+from visie import DICT_ENV_VAR, __version__
 from visie.__main__ import main
 
 TEST_DIR = Path(__file__).parent.absolute()
@@ -16,6 +16,14 @@ MISSING_DICT_PATH = str(TEST_DIR / "no-such-wordlist")
 
 
 class TestMain(unittest.TestCase):
+    def test_the_version_flag_reports_the_package_version(self):
+        """`--version` prints the version and exits 0 rather than demanding a constraint."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), self.assertRaises(SystemExit) as caught:
+            main(["visie", "--version"])
+        self.assertEqual(0, caught.exception.code)
+        self.assertEqual(f"visie {__version__}", stdout.getvalue().strip())
+
     def test_parse_errors_are_reported(self):
         """A malformed constraint exits with status 1 instead of raising through `main`."""
         for constraint in ("<abc", "?abc", "", "()"):

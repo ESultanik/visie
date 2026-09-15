@@ -47,6 +47,11 @@ class TestParser(unittest.TestCase):
 
     def test_parse_errors(self):
         """Every malformed constraint raises `ParseException`, never a bare exception."""
-        for constraint in ("<abc", "?abc", "", "(abc"):
+        for constraint in ("<abc", "?abc", "", "()", "[]", "{}", "<>", "(abc"):
             with self.subTest(constraint=constraint), self.assertRaises(ParseException):
                 Parser(constraint).parse()
+
+    def test_empty_group_names_its_position(self):
+        with self.assertRaises(ParseException) as context:
+            Parser("foo ()").parse()
+        self.assertIn("offset 4", str(context.exception))

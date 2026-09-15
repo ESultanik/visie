@@ -115,6 +115,9 @@ class Parser:
             raise ParseException(
                 f"{e!s}\nwhen looking for the closing delimiter of\n{start!s}\n"
             ) from e
+        if not children:
+            delims = f"{constraint_type.BEGIN_DELIM}{constraint_type.END_DELIM}"
+            raise ParseException(f'{start!s}\nEmpty "{delims}" group at offset {start.offset}')
         return constraint_type(children)
 
     def _parse_arguments(self, until: str | None = None) -> list[visie.Constraint]:

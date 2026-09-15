@@ -1,10 +1,15 @@
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from visie import generate
+from visie import DICT_ENV_VAR, DictionaryNotFoundError, find_dictionary, generate
 from visie.parser import Parser
 
-LOCAL_DICT_PATH = str(Path(__file__).parent.absolute() / "words")
+TEST_DIR = Path(__file__).parent.absolute()
+LOCAL_DICT = TEST_DIR / "words"
+LOCAL_DICT_PATH = str(LOCAL_DICT)
+MISSING_DICT = TEST_DIR / "no-such-wordlist"
 
 README_EXAMPLES: tuple[tuple[str, set[str]], ...] = (
     (
@@ -101,3 +106,59 @@ class TestVisie(unittest.TestCase):
         self.assertTrue(with_variants)
         self.assertLessEqual(baseline, with_variants)
         self.assertNotEqual(baseline, with_variants)
+
+
+class TestFindDictionary(unittest.TestCase):
+    def test_an_explicit_path_wins(self):
+        """`--dict` and the `dict_path` argument outrank both lower precedence sources."""
+        with (
+            patch.dict(os.environ, {DICT_ENV_VAR: str(MISSING_DICT)}),
+            patch("visie.visie.DICT_SEARCH_PATH", (MISSING_DICT,)),
+        ):
+            self.assertEqual(LOCAL_DICT, find_dictionary(LOCAL_DICT_PATH))
+
+    def test_the_environment_variable_wins_over_the_search_path(self):
+        with (
+            patch.dict(os.environ, {DICT_ENV_VAR: LOCAL_DICT_PATH}),
+            patch("visie.visie.DICT_SEARCH_PATH", (MISSING_DICT,)),
+        ):
+            self.assertEqual(LOCAL_DICT, find_dictionary())
+
+    def test_unreadable_search_path_entries_are_skipped(self):
+        """A path that exists but cannot be read must not shadow a readable one further down.
+
+        The test directory stands in for the unreadable entry because opening it fails for every
+        user, including root. A file with its permission bits cleared would not: root reads it
+        anyway, and the suite often runs as root in a container.
+        """
+        search_path = (MISSING_DICT, TEST_DIR, LOCAL_DICT)
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("visie.visie.DICT_SEARCH_PATH", search_path),
+        ):
+            self.assertEqual(LOCAL_DICT, find_dictionary())
+
+    def test_the_error_names_every_path_that_was_tried(self):
+        search_path = (MISSING_DICT, TEST_DIR / "no-such-wordlist-either")
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("visie.visie.DICT_SEARCH_PATH", search_path),
+            self.assertRaises(DictionaryNotFoundError) as caught,
+        ):
+            find_dictionary()
+        message = str(caught.exception)
+        for path in search_path:
+            self.assertIn(str(path), message)
+        self.assertIn(DICT_ENV_VAR, message)
+
+    def test_generate_reads_the_resolved_dictionary(self):
+        constraint, expected = README_EXAMPLES[0]
+        with (
+            patch.dict(os.environ, {DICT_ENV_VAR: LOCAL_DICT_PATH}),
+            patch("visie.visie.DICT_SEARCH_PATH", (MISSING_DICT,)),
+        ):
+            actual = {
+                f"{a.name()}: {' '.join(a)}"
+                for a in generate(Parser(constraint).parse(), min_length=4)
+            }
+        self.assertSetEqual(expected, actual)

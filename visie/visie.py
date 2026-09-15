@@ -1,11 +1,73 @@
 import itertools
+import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from . import variants
 
-DICT_PATH = str(Path("/usr/share/dict/words"))
+DICT_ENV_VAR = "VISIE_DICT"
+
+DICT_SEARCH_PATH: tuple[Path, ...] = (
+    Path("/usr/share/dict/words"),
+    Path("/usr/share/dict/web2"),
+    Path("/usr/dict/words"),
+)
+
+
+class DictionaryNotFoundError(Exception):
+    """Raised when none of the candidate wordlist paths can be read."""
+
+    def __init__(self, tried: Iterable[Path]) -> None:
+        self.tried: tuple[Path, ...] = tuple(tried)
+        candidates = "\n".join(f"  {path}" for path in self.tried)
+        super().__init__(
+            f"no readable wordlist was found; tried:\n{candidates}\n"
+            f"Install a wordlist, set the {DICT_ENV_VAR} environment variable to the path of "
+            f"one, or pass the path with --dict."
+        )
+
+
+def _candidates(dict_path: str | Path | None) -> tuple[Path, ...]:
+    if dict_path is not None:
+        return (Path(dict_path),)
+    from_environment = os.environ.get(DICT_ENV_VAR)
+    if from_environment:
+        return (Path(from_environment),)
+    return DICT_SEARCH_PATH
+
+
+def _is_readable(path: Path) -> bool:
+    try:
+        with path.open("rb"):
+            return True
+    except OSError:
+        return False
+
+
+def find_dictionary(dict_path: str | Path | None = None) -> Path:
+    """Locate the wordlist to enumerate initialisms from.
+
+    An explicit path takes precedence over the `VISIE_DICT` environment variable, which in turn
+    takes precedence over `DICT_SEARCH_PATH`. An explicit path and `VISIE_DICT` each name the one
+    wordlist to use, so neither falls back to a lower precedence source; the entries of
+    `DICT_SEARCH_PATH` are tried in order until one of them can be read.
+
+    Args:
+        dict_path: The path of a wordlist, such as the one given by the `--dict` flag. Pass
+            `None` to resolve the path from the environment or the search path.
+
+    Returns:
+        The path of the first candidate wordlist that can be opened for reading.
+
+    Raises:
+        DictionaryNotFoundError: If none of the candidate paths can be read.
+    """
+    candidates = _candidates(dict_path)
+    for candidate in candidates:
+        if _is_readable(candidate):
+            return candidate
+    raise DictionaryNotFoundError(candidates)
 
 
 class Acronym:
@@ -247,11 +309,11 @@ def generate(
     constraints: Constraint,
     min_length: int = 3,
     use_variants: bool = False,
-    dict_path: str = DICT_PATH,
+    dict_path: str | Path | None = None,
 ) -> Iterator[Acronym]:
     min_length = max(constraints.min_length(), min_length)
     max_length = constraints.max_length()
-    with Path(dict_path).open(encoding="utf-8", errors="replace") as dictionary:
+    with find_dictionary(dict_path).open(encoding="utf-8", errors="replace") as dictionary:
         yielded: set[str] = set()
         dict_words: Iterable[str] = (w.strip() for w in dictionary)
         if use_variants:
